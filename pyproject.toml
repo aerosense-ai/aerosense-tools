@@ -1,0 +1,43 @@
+[tool.poetry]
+name = "aerosense-tools"
+version = "0.1.0"
+description = "Functions for working with aerosense data, useful in building dashboards, analysis notebooks and digital twin services"
+authors = ["Tom Clark", "Marcus Lugg", "Yuriy Marykovsky"]
+license = "BSD-3"
+readme = "README.md"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "License :: OSI Approved :: BSD License",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Operating System :: OS Independent",
+]
+repository = "https://github.com/aerosense-ai/aerosense-tools"
+keywords = ["aerosense", "tools"]
+packages = [{ include = "aerosense_tools" },]
+
+
+[tool.poetry.dependencies]
+python = ">=3.8,<3.11"
+
+
+[tool.poetry.dev-dependencies]
+coverage = "^6.2"
+pre-commit = "^2.17.0"
+pytest-sugar = "^0.9.4"
+pytest-asyncio = "^0.17.2"
+pytest = "^6.2.5"
+tox = "^3.24.5"
+tox-gh-actions = "^2.9.1"
+tox-poetry = "^0.4.1"
+sphinx-rtd-theme = "^1.0.0"
+sphinx-tabs = "^3.2.0"
+sphinx-charts = "^0.0.4"
+
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

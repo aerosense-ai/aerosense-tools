@@ -1,0 +1,10 @@
+[paths]
+source =
+    aerosense_tools/
+
+[run]
+omit =
+    env/*
+    venv/*
+    tests/*
+    */tests/*
