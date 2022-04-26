@@ -10,8 +10,8 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
+import re
 import os
-import subprocess
 import sys
 import sphinx_rtd_theme
 
@@ -59,20 +59,12 @@ copyright = u"The Aerosense Research Partners"
 # built documents.
 
 # The full version, including alpha/beta/rc tags.
-os.chdir(os.path.join("..", ".."))
-release = subprocess.check_output(["poetry", "version", "-s"]).decode().strip()
-os.chdir(os.path.join("docs", "source"))
 
-# The short X.Y version.
-version = ".".join(release.split(".")[0:2])
-
-
-# The version info for the project you're documenting, acts as replacement for
-# |version| and |release|, also used in various other places throughout the
-# built documents.
-
-# The full version, including alpha/beta/rc tags.
-release = os.getenv("RELEASE_TAG", "x.y.unknown")
+p = re.compile('\nversion = "[0-9.]*[a-z0-9]"')
+with open("../../pyproject.toml", "r", encoding="utf-8") as pyproject_file:
+    pyproject_contents = pyproject_file.read()
+    result = p.search(pyproject_contents)
+    release = result.group(0).split('"')[1]
 
 # The short X.Y version.
 version = ".".join(release.split(".")[0:2])
