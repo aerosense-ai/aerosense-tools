@@ -1,0 +1,77 @@
+exclude: ".git/|.tox|docs/html/|docs/doctrees/|((?:[^/]*/)*)(.svg)|((?:[^/]*/)*)(.xml)"
+default_stages: [commit]
+fail_fast: true
+default_language_version:
+  python: python3
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v3.1.0
+    hooks:
+      - id: check-added-large-files
+        args: ["--maxkb=10240"]
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: no-commit-to-branch
+      - id: trailing-whitespace
+
+  - repo: https://gitlab.com/bmares/check-json5
+    rev: v1.0.0
+    hooks:
+      - id: check-json5
+
+  - repo: https://github.com/psf/black
+    rev: 22.3.0
+    hooks:
+      - id: black
+        args: ["--line-length", "120"]
+
+  - repo: https://gitlab.com/pycqa/flake8
+    rev: 3.8.1
+    hooks:
+      - id: flake8
+        args: ["--config=setup.cfg"]
+        language_version: python3
+
+  - repo: https://github.com/timothycrosley/isort
+    rev: 5.0.9
+    hooks:
+      - id: isort
+        require_serial: true
+
+  - repo: https://github.com/windpioneers/pre-commit-hooks
+    rev: 0.0.5
+    hooks:
+      - id: check-branch-name
+        args:
+          # Main branch...
+          - "^main$"
+          # Or a descriptive kebab-case branch name
+          # which if it includes an issue number will
+          # auto-link pull requests to that issue on github, eg:
+          #   my-branch-to-fix-issue-#6
+          - "^([a-z][a-z0-9#]*)(-[a-z0-9#]+)*$"
+
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: "v2.2.1"
+    hooks:
+      - id: prettier
+
+  - repo: https://github.com/octue/pre-commit-hooks
+    rev: 0.5.0
+    hooks:
+      - id: check-commit-message-is-conventional
+        stages: [commit-msg]
+        args:
+          - --maximum-body-line-length=2000
+
+  - repo: https://github.com/thclark/pre-commit-sphinx
+    rev: 0.0.1
+    hooks:
+      - id: build-docs
+        language_version: python3
+        additional_dependencies:
+          - "Sphinx>=4,<5"
+          - "sphinx-rtd-theme==1.0.0"
+          - "sphinx-tabs==3.2.0"
+          - "sphinx-charts==0.1.2"
+          - "sphinx-math-dollar==1.2.0"
