@@ -1,43 +1,41 @@
-.. ATTENTION::
-    This library is in experimental stages! Please pin deployments to a specific release, and consider every release as breaking.
-
 ===============
 Aerosense Tools
 ===============
 
-.. epigraph::
-   *"Aerosense Tools" ~ wrappers and functions for querying the Aerosense database and working with the resulting data.*
-
-
-Data Origins
-============
+``aerosense-tools`` is a library of wrappers and functions for querying the Aerosense data warehouse and working with the resulting data.
 
 The data flow from the aerosense sensor modules looks like this:
 
 .. code-block::
 
    Node (edge processor on-blade)
-     >  Receiver (bluetooth equipment in-nacelle)
-       >  Gateway (data manager and uploader on-nacelle)
+     >  Receiver (bluetooth equipment on-tower)
+       >  Gateway (data manager and uploader on-tower)
          >  Ingress (server to receive data on-cloud)
-           >  GretaDB (BigQuery database)
+           >  GretaDB (GCP BigQuery database for installation and most sensor data)
                 or
-           >  GretaStore (object store for acoustic data)
+           >  GretaStore (GCP Object Store for acoustic data)
 
 
-The ``data-gateway`` library is responsible for processing all that data and ingress.
+The ``data-gateway`` library is responsible for the data collection and ingress. 
+This library, ``aerosense-tools``, is used to access and manipulate 
+data from GretaDB or the GretaStore by any python client:
 
-This library, ``aerosense-tools``, is used by a python client, such as:
-   - a dashboard server
-   - a jupyter notebook
-   - a service within the Digital Twin
-   - a researchers own local script
-to access and manipulate data from GretaDB or the GretaStore
+.. code-block::
 
+   GretaDB or GretaStore
+      > dashboard server
+      > jupyter notebooks
+      > service within the Digital Twin
+      > local scripts run by researchers
+
+
+Contents
+========
 
 .. toctree::
    :maxdepth: 2
 
-   self
    installation
+   authentication
    api
