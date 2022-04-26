@@ -22,7 +22,7 @@ RUN poetry config virtualenvs.create false
 
 # Install python dependencies
 COPY pyproject.toml poetry.lock ./
-RUN poetry install
+# RUN poetry install
 
 # Ensure pre-commit is activated
-RUN pre-commit install && pre-commit install -t commit-msg
+# RUN pre-commit install && pre-commit install -t commit-msg
