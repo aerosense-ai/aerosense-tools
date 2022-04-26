@@ -60,8 +60,19 @@ copyright = u"The Aerosense Research Partners"
 
 # The full version, including alpha/beta/rc tags.
 os.chdir(os.path.join("..", ".."))
-release = subprocess.check_output(["python3", "setup.py", "--version"]).decode().strip()
+release = subprocess.check_output(["poetry", "version", "-s"]).decode().strip()
 os.chdir(os.path.join("docs", "source"))
+
+# The short X.Y version.
+version = ".".join(release.split(".")[0:2])
+
+
+# The version info for the project you're documenting, acts as replacement for
+# |version| and |release|, also used in various other places throughout the
+# built documents.
+
+# The full version, including alpha/beta/rc tags.
+release = os.getenv("RELEASE_TAG", "x.y.unknown")
 
 # The short X.Y version.
 version = ".".join(release.split(".")[0:2])

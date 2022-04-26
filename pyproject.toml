@@ -1,3 +1,5 @@
+[project]
+
 [tool.poetry]
 name = "aerosense-tools"
 version = "0.1.0"
@@ -22,6 +24,12 @@ packages = [{ include = "aerosense_tools" },]
 
 [tool.poetry.dependencies]
 python = ">=3.8,<3.11"
+Sphinx = {version = ">=4,<5", optional = true}
+sphinx-rtd-theme = {version = "1.0.0", optional = true}
+sphinx-tabs = {version = "3.2.0", optional = true}
+sphinx-charts = {version = "0.1.2", optional = true}
+sphinx-math-dollar = {version = "1.2.0", optional = true}
+sphinx-pyproject = "^0.1.0"
 
 
 [tool.poetry.dev-dependencies]
@@ -33,9 +41,10 @@ pytest = "^6.2.5"
 tox = "^3.24.5"
 tox-gh-actions = "^2.9.1"
 tox-poetry = "^0.4.1"
-sphinx-rtd-theme = "^1.0.0"
-sphinx-tabs = "^3.2.0"
-sphinx-charts = "^0.0.4"
+
+
+[tool.poetry.extras]
+docs = ["Sphinx", "sphinx-rtd-theme", "sphinx-tabs", "sphinx-charts", "sphinx-math-dollar"]
 
 
 [build-system]
