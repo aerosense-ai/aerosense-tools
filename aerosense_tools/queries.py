@@ -116,20 +116,17 @@ class BigQuery:
 
         return self.client.query(query, job_config=query_config).to_dataframe()
 
-    def get_aggregated_connection_statistics(
-        self,
-        installation_reference,
-        node_id,
-        start=None,
-        finish=None,
-    ):
-        """Query for minute-wise aggregated connection statistics over a day, by default the day up to now.
+    def get_aggregated_connection_statistics(self, installation_reference, node_id, start=None, finish=None):
+        """Get minute-wise aggregated connection statistics over the given time period. The time period defaults to the
+        last day.
 
-        :param [str] installation_reference: The installation reference to query for, e.g. "ost-wt-tests"
-        :param Union[datetime.datetime, None] up_to: The point in time, default now(), where results will
-        be delivered for the 24 hours prior.
+        :param str installation_reference: the reference of the installation to get sensor data from
+        :param str|None node_id: the node on the installation to get sensor data from
+        :param datetime.datetime|None start: defaults to 1 day before the given finish
+        :param datetime.datetime|None finish: defaults to the current datetime
+        :return pandas.Dataframe: the aggregated connection statistics
         """
-        connection_statistics_agg_sql = """
+        query = """
         SELECT datetime, filtered_rssi, raw_rssi, tx_power, allocated_heap_memory
         FROM `aerosense-twined.greta.connection_statistics_agg`
         WHERE datetime BETWEEN @start AND @finish
@@ -149,7 +146,7 @@ class BigQuery:
             ]
         )
 
-        return self.client.query(connection_statistics_agg_sql, job_config=query_config).to_dataframe()
+        return self.client.query(query, job_config=query_config).to_dataframe()
 
     def get_installations(self):
         """Query for all installations (without sensor coordinate data)"""
