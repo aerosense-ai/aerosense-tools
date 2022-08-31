@@ -149,14 +149,17 @@ class BigQuery:
         return self.client.query(query, job_config=query_config).to_dataframe()
 
     def get_installations(self):
-        """Query for all installations (without sensor coordinate data)"""
-        installations_sql = """
+        """Get the available installations.
+
+        :return list(dict): the available installations
+        """
+        query = """
         SELECT reference, turbine_id, location
         FROM `aerosense-twined.greta.installation`
         ORDER BY reference
         """
 
-        installations = self.client.query(installations_sql).to_dataframe().to_dict(orient="records")
+        installations = self.client.query(query).to_dataframe().to_dict(orient="records")
 
         return [
             {"label": f"{row['reference']} (Turbine {row['turbine_id']})", "value": row["reference"]}
@@ -166,7 +169,7 @@ class BigQuery:
     def get_sensor_types(self):
         """Get the available sensor types.
 
-        :return list:
+        :return list(str): the available sensor types
         """
         query = """
         SELECT name
@@ -177,10 +180,10 @@ class BigQuery:
         return self.client.query(query).to_dataframe()["name"].to_list()
 
     def get_nodes(self, installation_reference):
-        """Get the IDs of the nodes available for the given installation.
+        """Get the IDs of the nodes installed on the given installation.
 
-        :param str installation_reference:
-        :return list(str):
+        :param str installation_reference: the reference of the installation to get the node IDs of
+        :return list(str): the node IDs for the installation
         """
         query = """
         SELECT node_id FROM `aerosense-twined.greta.sensor_data`
@@ -196,7 +199,11 @@ class BigQuery:
         return self.client.query(query, job_config=query_config).to_dataframe()["node_id"].to_list()
 
     def _get_time_period(self, start=None, finish=None):
-        """Get the time period for the query. Defaults to the past day.
+        """Get a time period of:
+        - The past day if no arguments are given
+        - The given start until the current datetime if only the start is given
+        - The day previous to the finish if only the finish is given
+        - The given start and finish if both are given
 
         :param datetime.datetime|None start: defaults to 1 day before the given finish
         :param datetime.datetime|None finish: defaults to the current datetime
