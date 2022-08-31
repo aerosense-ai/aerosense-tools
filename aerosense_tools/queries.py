@@ -21,14 +21,13 @@ class BigQuery:
         """Get sensor data for the given sensor type on the given node of the given installation over the given time
         period. The time period defaults to the last day.
 
-        :param str installation_reference:
-        :param str|None node_id:
-        :param str sensor_type_reference:
-        :param datetime.datetime|None start:
-        :param datetime.datetime|None finish:
-        :param bool all_time:
-        :param int|None row_limit:
-        :return (pandas.Dataframe, bool):
+        :param str installation_reference: the reference of the installation to get sensor data from
+        :param str|None node_id: the node on the installation to get sensor data from
+        :param str sensor_type_reference: the type of sensor from which to get the data
+        :param datetime.datetime|None start: defaults to 1 day before the given finish
+        :param datetime.datetime|None finish: defaults to the current datetime
+        :param int|None row_limit: if set to `None`, no row limit is applied; if set to an integer, the row limit is set to this; defaults to 10000
+        :return (pandas.Dataframe, bool): the sensor data and whether the data has been limited by a row limit
         """
         table_name = f"aerosense-twined.greta.sensor_data_{sensor_type_reference}"
 
@@ -206,8 +205,8 @@ class BigQuery:
     def _get_time_period(self, start=None, finish=None):
         """Get the time period for the query. Defaults to the past day.
 
-        :param datetime.datetime|None start:
-        :param datetime.datetime|None finish:
+        :param datetime.datetime|None start: defaults to 1 day before the given finish
+        :param datetime.datetime|None finish: defaults to the current datetime
         :return (datetime.datetime, datetime.datetime):
         """
         finish = finish or dt.datetime.now()
