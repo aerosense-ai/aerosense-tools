@@ -81,23 +81,16 @@ class BigQuery:
         tolerance=1,
     ):
         """Get sensor data for the given sensor type on the given node of the given installation at the given datetime.
-        The first datetime within a tolerance of plus/minus half of `tolerance` is used.
+        The first datetime within a tolerance of ±0.5 * `tolerance` is used.
 
-        :param str installation_reference:
-        :param str|None node_id:
-        :param str sensor_type_reference:
-        :param datetime.datetime|None datetime:
+        :param str installation_reference: the reference of the installation to get sensor data from
+        :param str|None node_id: the node on the installation to get sensor data from
+        :param str sensor_type_reference: the type of sensor from which to get the data
+        :param datetime.datetime|None datetime: the datetime to get the data at
         :param float tolerance: the tolerance on the given datetime in seconds
-        :return pandas.Dataframe:
+        :return pandas.Dataframe: the sensor data at the given datetime
         """
         table_name = f"aerosense-twined.greta.sensor_data_{sensor_type_reference}"
-
-        conditions = """
-        WHERE datetime >= @start_datetime
-        AND datetime < @finish_datetime
-        AND installation_reference = @installation_reference
-        AND node_id = @node_id
-        """
 
         start_datetime = datetime - dt.timedelta(seconds=tolerance / 2)
         finish_datetime = datetime + dt.timedelta(seconds=tolerance / 2)
@@ -114,7 +107,10 @@ class BigQuery:
         query = f"""
         SELECT *
         FROM `{table_name}`
-        {conditions}
+        WHERE datetime >= @start_datetime
+        AND datetime < @finish_datetime
+        AND installation_reference = @installation_reference
+        AND node_id = @node_id
         ORDER BY datetime
         """
 
