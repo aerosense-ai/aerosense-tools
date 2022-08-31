@@ -49,7 +49,7 @@ repos:
           # which if it includes an issue number will
           # auto-link pull requests to that issue on github, eg:
           #   my-branch-to-fix-issue-#6
-          - "^([a-z][a-z0-9#]*)(-[a-z0-9#]+)*$"
+          - "^([a-z][a-z0-9#]*)([/-][a-z0-9#]+)*$"
 
   - repo: https://github.com/pre-commit/mirrors-prettier
     rev: "v2.2.1"
