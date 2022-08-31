@@ -5,16 +5,6 @@ from google.cloud import bigquery
 ROW_LIMIT = 10000
 
 
-# SCRATCH: MIGHT BE USEFUL, OTHERWISE GET RID:
-# ============================================
-# AND datetime > DATE_ADD(PARSE_DATETIME('%Y%m%d', @DS_START_DATE), INTERVAL @hour HOUR)
-# AND datetime < DATE_ADD(PARSE_DATETIME('%Y%m%d', @DS_START_DATE), INTERVAL @hour+1 HOUR)
-# AND IS_NAN(sensor_value[ORDINAL(1)]) IS FALSE
-# AND IS_NAN(sensor_value[ORDINAL(2)]) IS FALSE
-# AND IS_NAN(sensor_value[ORDINAL(3)]) IS FALSE
-# AND IS_NAN(sensor_value[ORDINAL(4)]) IS FALSE
-
-
 class BigQuery:
     def __init__(self):
         self.client = bigquery.Client()
@@ -26,6 +16,7 @@ class BigQuery:
         sensor_type_reference,
         start=None,
         finish=None,
+        row_limit=ROW_LIMIT,
     ):
         """Get sensor data for the given sensor type on the given node of the given installation over the given time
         period. The time period defaults to the last day.
@@ -36,7 +27,8 @@ class BigQuery:
         :param datetime.datetime|None start:
         :param datetime.datetime|None finish:
         :param bool all_time:
-        :return pandas.Dataframe:
+        :param int|None row_limit:
+        :return (pandas.Dataframe, bool):
         """
         table_name = f"aerosense-twined.greta.sensor_data_{sensor_type_reference}"
 
@@ -57,14 +49,6 @@ class BigQuery:
             ]
         )
 
-        count_query = f"""
-        SELECT COUNT(datetime)
-        FROM `{table_name}`
-        {conditions}
-        """
-
-        number_of_rows = list(self.client.query(count_query, job_config=query_config).result())[0][0]
-
         data_query = f"""
         SELECT *
         FROM `{table_name}`
@@ -74,9 +58,18 @@ class BigQuery:
 
         data_limit_applied = False
 
-        if number_of_rows > ROW_LIMIT:
-            data_query += f"\nLIMIT {ROW_LIMIT}"
-            data_limit_applied = True
+        if row_limit:
+            count_query = f"""
+            SELECT COUNT(datetime)
+            FROM `{table_name}`
+            {conditions}
+            """
+
+            number_of_rows = list(self.client.query(count_query, job_config=query_config).result())[0][0]
+
+            if number_of_rows > row_limit:
+                data_query += f"\nLIMIT {row_limit}"
+                data_limit_applied = True
 
         return (self.client.query(data_query, job_config=query_config).to_dataframe(), data_limit_applied)
 
