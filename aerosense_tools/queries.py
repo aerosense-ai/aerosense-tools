@@ -6,8 +6,14 @@ ROW_LIMIT = 10000
 
 
 class BigQuery:
-    def __init__(self):
-        self.client = bigquery.Client()
+    """A collection of queries for working with the Aerosense BigQuery dataset.
+
+    :param str project_name: the name of the Google Cloud project the BigQuery dataset belongs to
+    :return None:
+    """
+
+    def __init__(self, project_name="aerosense-twined"):
+        self.client = bigquery.Client(project=project_name)
 
     def get_sensor_data(
         self,
