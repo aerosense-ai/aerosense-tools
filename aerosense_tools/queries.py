@@ -218,3 +218,11 @@ class BigQuery:
         finish = finish or dt.datetime.now()
         start = start or finish - dt.timedelta(days=1)
         return start, finish
+
+    def query(self, query_string):
+        """Query the dataset with an arbitrary query.
+
+        :param str query_string: the query to use
+        :return pd.DataFrame: the results of the query
+        """
+        return self.client.query(query_string).to_dataframe()
