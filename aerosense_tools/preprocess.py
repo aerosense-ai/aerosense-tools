@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 from scipy.interpolate import interp1d
-from plots import plot_raw_signal
+from aerosense_tools.plots import plot_raw_signal
 
 
 class RawSignal:
