@@ -1,12 +1,24 @@
 import numpy as np
 import pandas as pd
 from scipy.interpolate import interp1d
+from plots import plot_raw_signal
 
 
 class RawSignal:
-    def __init__(self, dataframe, sensor):
+
+    def __init__(self, dataframe, sensor_type):
         self.dataframe = dataframe
-        self.sensor = sensor
+        self.sensor_type = sensor_type
+
+    def plot(self, sensor_types_metadata):
+        layout = {
+            "title": sensor_types_metadata[self.sensor_type]['description'],
+            "xaxis_title": "Date/Time",
+            "yaxis_title": sensor_types_metadata[self.sensor_type]['variable'],
+            "legend_title": "Sensor"
+        }
+        figure = plot_raw_signal(self.dataframe, layout_dict=layout)
+        return figure
 
     def pad_gaps(self, threshold):
         """Checks for missing data. If the gap between samples (timedelta) is
@@ -58,9 +70,9 @@ class RawSignal:
     def measurement_to_variable(self):
         """Transform fixed point values to a physical variable."""
         # TODO These values should be picked up from the session configuration metadata
-        if self.sensor == "barometer":
+        if self.sensor_type == "barometer":
             self.dataframe /= 40.96  # [Pa]
-        if self.sensor == "barometer_thermometer":
+        if self.sensor_type == "barometer_thermometer":
             self.dataframe /= 100  # [Celsius]
 
 
