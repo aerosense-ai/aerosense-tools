@@ -38,6 +38,18 @@ def plot_sensors(df):
     return figure
 
 
+def plot_raw_signal(df, layout_dict):
+    """Plot a line graph of each column of dataframe with index for x-axis. The layout is updated with data from a dict.
+
+    :param pandas.DataFrame df: a dataframe of sensor data filtered for the time period to be plotted
+    :param dict layout_dict: layout dictionary, to name the plot, axis and legend
+    :return: plotly.graph_objs.Figure: a line graph of the sensor data against time
+    """
+    figure = px.line(df)
+    figure.update_layout(layout_dict)
+    return figure
+
+
 def plot_pressure_bar_chart(df, y_minimum, y_maximum):
     """Plot a bar chart of pressures against barometers that measured them for a given instant in time.
 
