@@ -4,7 +4,7 @@
 name = "aerosense-tools"
 version = "0.3.3"
 description = "Functions for working with aerosense data, useful in building dashboards, analysis notebooks and digital twin services"
-authors = ["Tom Clark", "Marcus Lugg", "Yuriy Marykovsky"]
+authors = ["Tom Clark <tom@octue.com>", "Marcus Lugg <marcus@octue.com>", "Yuriy Marykovsky <yuriy.marykovskiy@ost.ch>"]
 license = "BSD-3"
 readme = "README.md"
 classifiers = [
