@@ -23,6 +23,7 @@ class BigQuery:
         start=None,
         finish=None,
         row_limit=ROW_LIMIT,
+        columns=None,
     ):
         """Get sensor data for the given sensor type on the given node of the given installation over the given time
         period. The time period defaults to the last day.
@@ -33,6 +34,7 @@ class BigQuery:
         :param datetime.datetime|None start: defaults to 1 day before the given finish
         :param datetime.datetime|None finish: defaults to the current datetime
         :param int|None row_limit: if set to `None`, no row limit is applied; if set to an integer, the row limit is set to this; defaults to 10000
+        :param iter(str)|None: the names of the columns to select
         :return (pandas.Dataframe, bool): the sensor data and whether the data has been limited by a row limit
         """
         table_name = f"aerosense-twined.greta.sensor_data_{sensor_type_reference}"
@@ -54,8 +56,10 @@ class BigQuery:
             ]
         )
 
+        columns = columns or ("datetime", "sensor_value")
+
         data_query = f"""
-        SELECT *
+        SELECT {', '.join(columns)}
         FROM `{table_name}`
         {conditions}
         ORDER BY datetime
@@ -85,6 +89,7 @@ class BigQuery:
         sensor_type_reference,
         datetime,
         tolerance=1,
+        columns=None,
     ):
         """Get sensor data for the given sensor type on the given node of the given installation at the given datetime.
         The first datetime within a tolerance of ±0.5 * `tolerance` is used.
@@ -94,6 +99,7 @@ class BigQuery:
         :param str sensor_type_reference: the type of sensor from which to get the data
         :param datetime.datetime|None datetime: the datetime to get the data at
         :param float tolerance: the tolerance on the given datetime in seconds
+        :param iter(str)|None: the names of the columns to select
         :return pandas.Dataframe: the sensor data at the given datetime
         """
         table_name = f"aerosense-twined.greta.sensor_data_{sensor_type_reference}"
@@ -110,8 +116,10 @@ class BigQuery:
             ]
         )
 
+        columns = columns or ("datetime", "sensor_value")
+
         query = f"""
-        SELECT *
+        SELECT {', '.join(columns)}
         FROM `{table_name}`
         WHERE datetime >= @start_datetime
         AND datetime < @finish_datetime
