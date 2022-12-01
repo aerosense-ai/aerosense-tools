@@ -70,9 +70,15 @@ class RawSignal:
     def measurement_to_variable(self):
         """Transform fixed point values to a physical variable."""
         # TODO These values should be picked up from the session configuration metadata
+        diffrange = 2 * 6000
+
         if self.sensor_type == "barometer":
             self.dataframe /= 40.96  # [Pa]
         if self.sensor_type == "barometer_thermometer":
             self.dataframe /= 100  # [Celsius]
+        if self.sensor_type == "differential_barometer":
+            self.dataframe -= 32767
+            self.dataframe *= diffrange/(58982-6553)
+
 
 
