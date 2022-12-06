@@ -110,7 +110,7 @@ class SensorMeasurementSession:
 
         :param float time_step: timestep in seconds
         :param datetime.datetime timeseries_start: start constant step time series at specified time
-        :return: resampled and interpolated data
+        :return SensorMeasurementSession: sensor session with resampled and interpolated data
         """
 
         old_time_vector = self.dataframe.index.values.astype(np.int64)
@@ -126,25 +126,22 @@ class SensorMeasurementSession:
             signal = interp1d(old_time_vector, self.dataframe[column], assume_sorted=True)
             new_dataframe[column] = signal(new_time_vector.values.astype(np.int64))
 
-        self.dataframe = new_dataframe
+        return SensorMeasurementSession(new_dataframe, self.sensor_type)
 
-    def trim_session(self, trim_from_start=dt.timedelta(), trim_from_end=dt.timedelta(), inplace=True):
+    def trim_session(self, trim_from_start=dt.timedelta(), trim_from_end=dt.timedelta()):
         """Delete first and last measurements from the session
 
         :param datetime.timedelta trim_from_start: Amount of time to trim from the start of the session
         :param datetime.timedelta trim_from_end: Amount of time to trim from the end of the session
-        :param bool inplace: perform operation on the session's dataframe or return a new dataframe
-        :return pandas.Dataframe trimmed_dataframe:
+        :return SensorMeasurementSession: sensor session with trimmed_dataframe
         """
         time_window = (
                 (self.dataframe.index > self.start + trim_from_start) &
                 (self.dataframe.index < self.end - trim_from_end)
         )
-        if inplace:
-            self.dataframe = self.dataframe[time_window]
-        else:
-            trimmed_dataframe = self.dataframe[time_window]
-            return trimmed_dataframe
+
+        trimmed_dataframe = self.dataframe[time_window]
+        return SensorMeasurementSession(trimmed_dataframe, self.sensor_type)
 
     def plot(self, sensor_types_metadata, sensor_names=None, plot_start_offset=dt.timedelta(), plot_max_time=None):
         """Plots the session dataframe with plotly.
@@ -158,7 +155,7 @@ class SensorMeasurementSession:
 
         if not plot_max_time:
             plot_max_time = self.duration-plot_start_offset
-        plot_df = self.trim_session(plot_start_offset, self.duration-plot_start_offset-plot_max_time, inplace=False)
+        plot_df = self.trim_session(plot_start_offset, self.duration-plot_start_offset-plot_max_time).dataframe
 
         if sensor_names:
             plot_df = plot_df[sensor_names]
