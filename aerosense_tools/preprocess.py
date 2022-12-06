@@ -1,7 +1,7 @@
 import logging
 import numpy as np
 import pandas as pd
-import datatime as dt
+import datetime as dt
 from scipy.interpolate import interp1d
 from aerosense_tools.plots import plot_with_layout
 
