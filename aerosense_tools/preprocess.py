@@ -153,8 +153,7 @@ class SensorMeasurementSession:
         :return: plotly.graph_objs.Figure: a line graph of the sensor data against time
         """
 
-        if not plot_max_time:
-            plot_max_time = self.duration-plot_start_offset
+        plot_max_time = plot_max_time or self.duration-plot_start_offset
         plot_df = self.trim_session(plot_start_offset, self.duration-plot_start_offset-plot_max_time).dataframe
 
         if sensor_names:
