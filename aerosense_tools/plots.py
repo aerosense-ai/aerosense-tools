@@ -38,7 +38,7 @@ def plot_sensors(df):
     return figure
 
 
-def plot_raw_signal(df, layout_dict):
+def plot_with_layout(df, layout_dict):
     """Plot a line graph of each column of dataframe with index for x-axis. The layout is updated with data from a dict.
 
     :param pandas.DataFrame df: a dataframe of sensor data filtered for the time period to be plotted
