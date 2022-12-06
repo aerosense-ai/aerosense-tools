@@ -105,7 +105,7 @@ class SensorMeasurementSession:
         self.end = dataframe.index[-1]
         self.duration = dataframe.index[-1] - dataframe.index[0]
 
-    def to_constant_timestep(self, time_step, timeseries_start=self.start):
+    def to_constant_timestep(self, time_step, timeseries_start=None):
         """Resample dataframe to the given time step. Linearly interpolates between samples.
 
         :param float time_step: timestep in seconds
@@ -115,7 +115,7 @@ class SensorMeasurementSession:
 
         old_time_vector = self.dataframe.index.values.astype(np.int64)
         new_time_vector = pd.date_range(
-            start=timeseries_start,
+            start=timeseries_start or self.start,
             end=self.end,
             freq="{:.12f}S".format(time_step)
         )
