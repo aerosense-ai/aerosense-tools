@@ -85,23 +85,31 @@ class RawSignal:
         session_ends = abs(sample_time['datetime'].diff(-1)) > threshold
         session_starts.iloc[0] = session_ends.iloc[-1] = True
 
-        # Not sure if concat is the best way, but will do for now
-        sessions = pd.concat([sample_time[session_starts], sample_time[session_ends]], axis=1)
-        sessions.columns = ['start', 'end']
-
         # Edge case of a single measurement point:
-        if any(sessions['start'] == sessions['end']):
-            logger.warning('Sensor type {} has single measurement points'.format(self.sensor_type))
-            logger.info(sessions[sessions['start'] == sessions['end']])
-            sessions = sessions[sessions['start'] != sessions['end']]
+        single_sample = sample_time.index[session_starts] == sample_time.index[session_ends]
+        if any(single_sample):
+            logger.warning(
+                'Sensor type {} has single measurement points at {}'.format(
+                    self.sensor_type,
+                    sample_time[session_starts][single_sample]
+                )
+            )
 
-        sessions['end'] = sessions['end'].shift(-1)
+        start_rows = sample_time.index[session_starts][~single_sample]
+        end_rows = sample_time.index[session_ends][~single_sample]
 
-        session_times = sessions.dropna().reset_index(drop=True)
+        session_times = pd.DataFrame({
+            "start": sample_time["datetime"][start_rows].to_list(),
+            "end": sample_time["datetime"][end_rows].to_list()
+        })
 
-        for session_start, session_end in zip(session_times['start'], session_times['end']):
-            time_window = ((self.dataframe.index > session_start) & (self.dataframe.index < session_end))
-            measurement_sessions.append(SensorMeasurementSession(self.dataframe[time_window], self.sensor_type))
+        for start_row, end_row in zip(start_rows, end_rows):
+            measurement_sessions.append(
+                SensorMeasurementSession(
+                    self.dataframe.iloc[start_row:end_row, :],
+                    self.sensor_type
+                )
+            )
 
         return measurement_sessions, session_times
 
