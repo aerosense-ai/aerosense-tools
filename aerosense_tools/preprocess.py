@@ -128,7 +128,7 @@ class SensorMeasurementSession:
     def to_constant_timestep(self, time_step, timeseries_start=None):
         """Resample dataframe to the given time step. Linearly interpolates between samples.
 
-        :param float time_step: timestep in seconds
+        :param datetime.timedelta time_step: timestep as datetime timedelta type
         :param datetime.datetime timeseries_start: start constant step time series at specified time
         :return SensorMeasurementSession: sensor session with resampled and interpolated data
         """
@@ -137,7 +137,7 @@ class SensorMeasurementSession:
         new_time_vector = pd.date_range(
             start=timeseries_start or self.start,
             end=self.end,
-            freq="{:.12f}S".format(time_step)
+            freq=time_step
         )
 
         new_dataframe = pd.DataFrame(index=new_time_vector)
