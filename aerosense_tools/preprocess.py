@@ -42,22 +42,34 @@ class RawSignal:
             & (self.dataframe >= rolling_median - standard_deviation_multiplier * rolling_std)
             ]
 
-    def measurement_to_variable(self):
+    def measurement_to_variable(self, sensor_conversion_constants=None):
         """Transform fixed point values to a physical variable.
 
+        :param dict sensor_conversion_constants: dictionary containing calibrated conversion constants
         :return pandas.Dataframe: inplace transformed dataframe with raw values transformed to variable values
         """
         # TODO These values should be picked up from the session configuration metadata
         # TODO Refactor the name of the function to values_to_variables
-        diffrange = 2 * 6000
+        gravitational_acceleration = 9.81  # [m/s²]
+        differential_pressure_range = 2 * 6000
+        differential_pressure_offset = 32767
+        gyroscope_sensitivity = 16.4  # Typ Gyro sensitivity LSB/deg/s
+        accelerometer_sensitivity = 2048  # Typ. Accelerometer sensitivity LSB/g
 
-        if self.sensor_type == "barometer":
-            self.dataframe /= 40.96  # [Pa]
-        if self.sensor_type == "barometer_thermometer":
-            self.dataframe /= 100  # [Celsius]
+        default_conversion_constants = {
+            "barometer": 40.96,  # [Pa]
+            "barometer_thermometer": 100,  # [Celsius]
+            "differential_barometer": (58982 - 6553)/differential_pressure_range,  # [Pa]
+            "accelerometer": accelerometer_sensitivity/gravitational_acceleration,  # [m/s²]
+            "gyroscope": gyroscope_sensitivity * 180 / np.pi,  # [s⁻¹]
+            "magnetometer": 1  # TODO this is tbd.
+        }
+        sensor_conversion_constants = sensor_conversion_constants or default_conversion_constants
+
         if self.sensor_type == "differential_barometer":
-            self.dataframe -= 32767
-            self.dataframe *= diffrange/(58982-6553)
+            self.dataframe -= differential_pressure_offset
+
+        self.dataframe /= sensor_conversion_constants[self.sensor_type]
 
     def extract_measurement_sessions(self, threshold=dt.timedelta(seconds=60)):
         """Extract sessions (continuous measurement periods) from raw data.
