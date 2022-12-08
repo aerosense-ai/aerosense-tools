@@ -2,7 +2,7 @@
 
 [tool.poetry]
 name = "aerosense-tools"
-version = "0.3.2"
+version = "0.4.0"
 description = "Functions for working with aerosense data, useful in building dashboards, analysis notebooks and digital twin services"
 authors = ["Tom Clark", "Marcus Lugg", "Yuriy Marykovsky"]
 license = "BSD-3"
@@ -32,6 +32,7 @@ sphinx-math-dollar = {version = "1.2.0", optional = true}
 sphinx-pyproject = "^0.1.0"
 google-cloud-bigquery = {extras = ["bqstorage", "pandas"], version = "^3.0.1"}
 plotly = "^5.10.0"
+scipy = "^1.7"
 
 
 [tool.poetry.dev-dependencies]
