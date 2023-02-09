@@ -122,6 +122,15 @@ class SensorMeasurementSession:
         self.start = dataframe.index[0]
         self.end = dataframe.index[-1]
         self.duration = dataframe.index[-1] - dataframe.index[0]
+        self.sensor_statistics = self._compute_sensor_statistics(dataframe)
+
+    def _compute_sensor_statistics(self, dataframe):
+        """Compute uselful statistics for each sensor during the entire session.
+
+        :return PandasDataframe: a dataframe
+        """
+        statistics = dataframe.agg(["min", "max", "mean", "std"])
+        return statistics
 
     def to_constant_timestep(self, time_step, timeseries_start=None):
         """Resample dataframe to the given time step. Linearly interpolates between samples.
