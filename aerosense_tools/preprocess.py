@@ -140,9 +140,13 @@ class SensorMeasurementSession:
         :return SensorMeasurementSession: sensor session with resampled and interpolated data
         """
 
-        old_time_vector = self.dataframe.index.values.astype(np.int64)
         new_time_vector = pd.date_range(start=timeseries_start or self.start, end=self.end, freq=time_step)
 
+        return self.to_new_time_vector(new_time_vector)
+
+    def to_new_time_vector(self, new_time_vector):
+
+        old_time_vector = self.dataframe.index.values.astype(np.int64)
         new_dataframe = pd.DataFrame(index=new_time_vector)
 
         for column in self.dataframe.columns:
@@ -189,3 +193,17 @@ class SensorMeasurementSession:
         }
         figure = plot_with_layout(plot_df, layout_dict=layout)
         return figure
+
+
+class MergedSession:
+    def __init__(self):
+        self.dataframe = None
+
+    def merge_and_interpolate(self, primary_session, *secondary_sessions):
+
+        for secondary_session in secondary_sessions:
+            merged_dataframe = primary_session.dataframe.join(
+                secondary_session.to_new_time_vector(primary_session.dataframe.index)
+            )
+
+        self.dataframe = merged_dataframe
