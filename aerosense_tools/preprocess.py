@@ -147,6 +147,12 @@ class SensorMeasurementSession:
 
         return SensorMeasurementSession(new_dataframe, self.sensor_type)
 
+    def merge_with_and_interpolate(self, *secondary_sessions):
+        for secondary_session in secondary_sessions:
+            merged_df = pd.concat([self.dataframe, secondary_session.dataframe], axis=1)
+            merged_df = merged_df.interpolate('index').reindex(self.dataframe.index)
+        return merged_df
+
     def trim_session(self, trim_from_start=dt.timedelta(), trim_from_end=dt.timedelta()):
         """Delete first and last measurements from the session
 
@@ -187,15 +193,3 @@ class SensorMeasurementSession:
         return figure
 
 
-class MergedSession:
-    def __init__(self):
-        self.dataframe = None
-
-    def merge_and_interpolate(self, primary_session, *secondary_sessions):
-
-        for secondary_session in secondary_sessions:
-            merged_dataframe = primary_session.dataframe.join(
-                secondary_session.to_new_time_vector(primary_session.dataframe.index)
-            )
-
-        self.dataframe = merged_dataframe
