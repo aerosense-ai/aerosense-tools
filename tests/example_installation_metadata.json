@@ -1,0 +1,160 @@
+{
+  "accelerometer": {
+    "description": "Accelerometer Measurement Series",
+    "variable": "Acceleration [m/s²]",
+    "sensors": [
+      "Acc. Direction 1",
+      "Acc. Direction 2",
+      "Acc. Direction 3"
+    ]
+  },
+  "barometer": {
+    "description": "Barometer Measurement Series",
+    "variable": "Pressure [Pa]",
+    "sensors": [
+      "Abs. Baro. Sensor 0",
+      "Abs. Baro. Sensor 1",
+      "Abs. Baro. Sensor 2",
+      "Abs. Baro. Sensor 3",
+      "Abs. Baro. Sensor 4",
+      "Abs. Baro. Sensor 5",
+      "Abs. Baro. Sensor 6",
+      "Abs. Baro. Sensor 7",
+      "Abs. Baro. Sensor 8",
+      "Abs. Baro. Sensor 9",
+      "Abs. Baro. Sensor 10",
+      "Abs. Baro. Sensor 11",
+      "Abs. Baro. Sensor 12",
+      "Abs. Baro. Sensor 13",
+      "Abs. Baro. Sensor 14",
+      "Abs. Baro. Sensor 15",
+      "Abs. Baro. Sensor 16",
+      "Abs. Baro. Sensor 17",
+      "Abs. Baro. Sensor 18",
+      "Abs. Baro. Sensor 19",
+      "Abs. Baro. Sensor 20",
+      "Abs. Baro. Sensor 21",
+      "Abs. Baro. Sensor 22",
+      "Abs. Baro. Sensor 23",
+      "Abs. Baro. Sensor 24",
+      "Abs. Baro. Sensor 25",
+      "Abs. Baro. Sensor 26",
+      "Abs. Baro. Sensor 27",
+      "Abs. Baro. Sensor 28",
+      "Abs. Baro. Sensor 29",
+      "Abs. Baro. Sensor 30",
+      "Abs. Baro. Sensor 31",
+      "Abs. Baro. Sensor 32",
+      "Abs. Baro. Sensor 33",
+      "Abs. Baro. Sensor 34",
+      "Abs. Baro. Sensor 35",
+      "Abs. Baro. Sensor 36",
+      "Abs. Baro. Sensor 37",
+      "Abs. Baro. Sensor 38",
+      "Abs. Baro. Sensor 39"
+    ]
+  },
+  "barometer_thermometer": {
+    "description": "Temperature Measurement Series from Barometer Sensors",
+    "variable": "Temperature [C]",
+    "sensors": [
+      "Temp. Sensor 0",
+      "Temp. Sensor 1",
+      "Temp. Sensor 2",
+      "Temp. Sensor 3",
+      "Temp. Sensor 4",
+      "Temp. Sensor 5",
+      "Temp. Sensor 6",
+      "Temp. Sensor 7",
+      "Temp. Sensor 8",
+      "Temp. Sensor 9",
+      "Temp. Sensor 10",
+      "Temp. Sensor 11",
+      "Temp. Sensor 12",
+      "Temp. Sensor 13",
+      "Temp. Sensor 14",
+      "Temp. Sensor 15",
+      "Temp. Sensor 16",
+      "Temp. Sensor 17",
+      "Temp. Sensor 18",
+      "Temp. Sensor 19",
+      "Temp. Sensor 20",
+      "Temp. Sensor 21",
+      "Temp. Sensor 22",
+      "Temp. Sensor 23",
+      "Temp. Sensor 24",
+      "Temp. Sensor 25",
+      "Temp. Sensor 26",
+      "Temp. Sensor 27",
+      "Temp. Sensor 28",
+      "Temp. Sensor 29",
+      "Temp. Sensor 30",
+      "Temp. Sensor 31",
+      "Temp. Sensor 32",
+      "Temp. Sensor 33",
+      "Temp. Sensor 34",
+      "Temp. Sensor 35",
+      "Temp. Sensor 36",
+      "Temp. Sensor 37",
+      "Temp. Sensor 38",
+      "Temp. Sensor 39"
+    ]
+  },
+  "connection_statistics": {
+    "description": "Connection Statistics",
+    "variable": [
+      "Transmitting Power [W]",
+      "Allocated Heap Memory [Bytes]",
+      "Received signal strength indication: Raw [dBm]",
+      "Received signal strength indication: Filtered [dBm]"
+    ],
+    "sensors": [
+      "Conn. Stat. 0",
+      "Conn. Stat. 1",
+      "Conn. Stat. 2",
+      "Conn. Stat. 3"
+    ]
+  },
+  "battery_info": {
+    "description": "Battery State information",
+    "variable": [
+      "Voltage [V]",
+      "Number of cylces",
+      "Battery Capacity [%]"
+    ],
+    "sensors": [
+      "Batt. info. 0",
+      "Batt. info. 1",
+      "Batt. info. 2"
+    ]
+  },
+  "differential_barometer": {
+    "description": "Differential Pressure Measurement Series",
+    "variable": "Differential Pressure [Pa]",
+    "sensors": [
+      "Diff. Baro. Sensor 0",
+      "Diff. Baro. Sensor 1",
+      "Diff. Baro. Sensor 2",
+      "Diff. Baro. Sensor 3",
+      "Diff. Baro. Sensor 4"
+    ]
+  },
+  "gyroscope": {
+    "description": "Gyroscope Measurement Series",
+    "variable": "Angular Velocity [s⁻¹]",
+    "sensors": [
+      "Gyro. Direction 1",
+      "Gyro. Direction 2",
+      "Gyro. Direction 3"
+    ]
+  },
+  "magnetometer": {
+    "description": "Magnetometer Measurement Series",
+    "variable": "Magnetic Momemnt [A⋅m²]",
+    "sensors": [
+      "Mag. Direction 1",
+      "Mag. Direction 2",
+      "Mag. Direction 3"
+    ]
+  }
+}
