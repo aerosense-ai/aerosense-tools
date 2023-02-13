@@ -148,6 +148,11 @@ class SensorMeasurementSession:
         return SensorMeasurementSession(new_dataframe, self.sensor_type)
 
     def merge_with_and_interpolate(self, *secondary_sessions):
+        """Merge current session's sensor measurements with measurements from other sensors (secondary sessions)
+        The values from the secondary sessions will be interpolated onto the current session's time vector.
+
+        :return Pandas.DataFrame: Merged dataframe
+        """
         for secondary_session in secondary_sessions:
             merged_df = pd.concat([self.dataframe, secondary_session.dataframe], axis=1)
             merged_df = merged_df.interpolate('index').reindex(self.dataframe.index)
