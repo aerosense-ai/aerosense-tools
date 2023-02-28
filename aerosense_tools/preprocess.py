@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 class RawSignal:
+    """A class representing raw data received from data gateway."""
     def __init__(self, dataframe, sensor_type):
         self.dataframe = dataframe
         self.sensor_type = sensor_type
