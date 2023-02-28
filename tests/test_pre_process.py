@@ -16,7 +16,8 @@ class TestPreProcess(unittest.TestCase):
         time_vector = pd.date_range(start=start, end=start+length, freq=freq)
         sample_dataframe = pd.DataFrame(index=time_vector)
         sample_dataframe.index.name="datetime"
-        sample_dataframe['test_data']=np.random.normal(0, 1, size=len(sample_dataframe))
+        sample_dataframe['test_data_1'] = np.random.normal(0, 1, size=len(sample_dataframe))
+        sample_dataframe['test_data_2'] = np.random.normal(0, 1, size=len(sample_dataframe))
         return sample_dataframe
 
     def example_metadata(self):
@@ -34,6 +35,13 @@ class TestPreProcess(unittest.TestCase):
         measurement_sessions, measurement_session_times = signal.extract_measurement_sessions()
 
         self.assertEqual(len(measurement_session_times), 2)
+
+    def test_interpolate_to_constant_timestep(self):
+        data = self.sample_timeseries(dt.datetime(2020, 5, 4), dt.timedelta(seconds=1), dt.timedelta(seconds=0.1))
+        session = SensorMeasurementSession(data, "test_sensor")
+        resampled_session = session.to_constant_timestep(dt.timedelta(seconds=0.1), timeseries_start=dt.datetime(2020, 5, 4, 0, 0, 0, 50000))
+
+        self.assertEqual((data.iloc[0,0]+data.iloc[1,0])/2, resampled_session.dataframe.iloc[0,0])
 
     def test_merge_with_and_interpolate(self):
         data1 = self.sample_timeseries(dt.datetime(2020, 5, 4), dt.timedelta(seconds=1), dt.timedelta(seconds=0.1))
