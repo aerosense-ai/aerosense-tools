@@ -9,9 +9,14 @@ API
 
 Tools
 =====
+Data tools - Pandas Wrappers
+__________
 
-.. .. autoclass:: data_gateway.configuration.Configuration
-..     :members:
+.. automodule:: aerosense_tools.preprocess
+    :members:
 
-.. .. automodule:: data_gateway.exceptions
-..     :members:
+Big Query Wrappers
+__________
+
+.. automodule:: aerosense_tools.queries
+    :members:
