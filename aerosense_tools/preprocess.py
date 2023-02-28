@@ -147,7 +147,7 @@ class SensorMeasurementSession:
 
         new_dataframe = pd.DataFrame(index=new_time_vector)
         new_dataframe = pd.concat([self.dataframe, new_dataframe], axis=1)
-        new_dataframe = new_dataframe.interpolate().reindex(new_time_vector)
+        new_dataframe = new_dataframe.interpolate("index", limit_area="inside").reindex(new_time_vector)
 
         return SensorMeasurementSession(new_dataframe, self.sensor_type)
 
@@ -159,7 +159,7 @@ class SensorMeasurementSession:
         """
         for secondary_session in secondary_sessions:
             merged_df = pd.concat([self.dataframe, secondary_session.dataframe], axis=1)
-            merged_df = merged_df.interpolate('index').reindex(self.dataframe.index)
+            merged_df = merged_df.interpolate('index', limit_area="inside").reindex(self.dataframe.index)
         return merged_df
 
     def trim_session(self, trim_from_start=dt.timedelta(), trim_from_end=dt.timedelta()):
