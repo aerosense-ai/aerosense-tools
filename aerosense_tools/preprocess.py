@@ -2,7 +2,6 @@ import datetime as dt
 import logging
 import numpy as np
 import pandas as pd
-from scipy.interpolate import interp1d
 
 from aerosense_tools.plots import plot_with_layout
 
@@ -138,13 +137,17 @@ class SensorMeasurementSession:
         return self.to_new_time_vector(new_time_vector)
 
     def to_new_time_vector(self, new_time_vector):
+        """Interpolates the original dataframe onto a new time index.
 
-        old_time_vector = self.dataframe.index.values.astype(np.int64)
+        :param new_time_vector: the new time index
+        :type new_time_vector: pandas.DatetimeIndex
+        :return: a new SensorMeasurementSession object with the interpolated dataframe
+        :rtype: SensorMeasurementSession
+        """
+
         new_dataframe = pd.DataFrame(index=new_time_vector)
-
-        for column in self.dataframe.columns:
-            signal = interp1d(old_time_vector, self.dataframe[column], assume_sorted=True)
-            new_dataframe[column] = signal(new_time_vector.values.astype(np.int64))
+        new_dataframe = pd.concat([self.dataframe, new_dataframe], axis=1)
+        new_dataframe = new_dataframe.interpolate().reindex(new_time_vector)
 
         return SensorMeasurementSession(new_dataframe, self.sensor_type)
 
