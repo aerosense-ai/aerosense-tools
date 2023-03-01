@@ -33,6 +33,11 @@ class TestPreProcess(unittest.TestCase):
             session_metadata = json.load(in_file)
         return session_metadata
 
+    def test_classes_with_empty_dataframe(self):
+        data = pd.DataFrame()
+        self.assertRaises(ValueError, RawSignal, data, "test_sensor")
+        self.assertRaises(ValueError, SensorMeasurementSession, data, "test_session")
+
     def test_extract_measurement_session(self):
         data1 = self.base_data()
         data2 = self.sample_timeseries(TEST_START_TIME + dt.timedelta(minutes=30), TEST_DURATION, TEST_SAMPLING_STEP)
