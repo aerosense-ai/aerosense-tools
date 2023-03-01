@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 
 from aerosense_tools.plots import plot_with_layout
+from aerosense_tools.exceptions import EmptyDataFrameError
 
 
 logger = logging.getLogger(__name__)
@@ -12,6 +13,8 @@ logger = logging.getLogger(__name__)
 class RawSignal:
     """A class representing raw data received from data gateway."""
     def __init__(self, dataframe, sensor_type):
+        if dataframe.empty:
+            raise EmptyDataFrameError("Empty DataFrame is not allowed for the RawSignal Class")
         self.dataframe = dataframe
         self.sensor_type = sensor_type
 
@@ -117,6 +120,8 @@ class SensorMeasurementSession:
     """
 
     def __init__(self, dataframe, sensor_type):
+        if dataframe.empty:
+            raise EmptyDataFrameError("Empty DataFrame is not allowed for the SensorMeasurementSession Class")
         self.dataframe = dataframe
         self.sensor_type = sensor_type
         self.start = dataframe.index[0]
