@@ -15,6 +15,7 @@ TEST_SAMPLING_STEP = dt.timedelta(seconds=0.1)
 
 
 class TestPreProcess(unittest.TestCase):
+    """Test that pre-process RawSignal and SensorMeasurementSession class methods are performing as expected."""
     def sample_timeseries(self, start, length, freq):
         """Creates a sample pandas dataframe with a datetime index and two columns of random normal data.
 
