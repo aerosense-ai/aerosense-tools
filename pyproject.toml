@@ -19,7 +19,7 @@ classifiers = [
 ]
 repository = "https://github.com/aerosense-ai/aerosense-tools"
 keywords = ["aerosense", "tools"]
-packages = [{ include = "aerosense_tools" },]
+packages = [{ include = "aerosense_tools" }]
 
 
 [tool.poetry.dependencies]
@@ -27,12 +27,6 @@ python = ">=3.8,<3.11"
 google-cloud-bigquery = {extras = ["bqstorage", "pandas"], version = "^3.0.1"}
 plotly = "^5.10.0"
 scipy = "^1.10"
-# Documentation
-Sphinx = ">=4,<5"
-sphinx-rtd-theme = ">=1,<2"
-sphinx-tabs = ">=3,<4"
-sphinx-toolbox = "3.0.0"
-sphinx-pyproject = "^0.1.0"
 
 
 [tool.poetry.group.dev.dependencies]
@@ -44,6 +38,12 @@ pytest = "^6.2.5"
 tox = "^3.24.5"
 tox-gh-actions = "^2.9.1"
 tox-poetry = "^0.4.1"
+# Documentation
+Sphinx = ">=4,<5"
+sphinx-rtd-theme = ">=1,<2"
+sphinx-tabs = ">=3,<4"
+sphinx-toolbox = "3.0.0"
+sphinx-pyproject = "^0.1.0"
 
 
 [tool.poetry.extras]
