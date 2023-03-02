@@ -1,4 +1,5 @@
 import datetime as dt
+import json
 from google.cloud import bigquery
 
 
@@ -183,7 +184,10 @@ class BigQuery:
         ORDER BY name
         """
 
-        return self.client.query(query).to_dataframe().to_dict("records")
+        return {
+            sensor_type["name"]: json.loads(sensor_type["metadata"])
+            for sensor_type in self.client.query(query).to_dataframe().to_dict("records")
+        }
 
     def get_nodes(self, installation_reference):
         """Get the IDs of the nodes installed on the given installation.
