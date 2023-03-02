@@ -2,7 +2,7 @@
 
 [tool.poetry]
 name = "aerosense-tools"
-version = "0.4.0"
+version = "0.5.0"
 description = "Functions for working with aerosense data, useful in building dashboards, analysis notebooks and digital twin services"
 authors = ["Tom Clark", "Marcus Lugg", "Yuriy Marykovsky"]
 license = "BSD-3"
@@ -33,7 +33,6 @@ sphinx-rtd-theme = ">=1,<2"
 sphinx-tabs = ">=3,<4"
 sphinx-toolbox = "3.0.0"
 sphinx-pyproject = "^0.1.0"
-
 
 
 [tool.poetry.dev-dependencies]

@@ -173,17 +173,17 @@ class BigQuery:
         ]
 
     def get_sensor_types(self):
-        """Get the available sensor types.
+        """Get the available sensor types and their metadata.
 
-        :return list(str): the available sensor types
+        :return list(dict): the available sensor types and their metadata
         """
         query = """
-        SELECT name
+        SELECT name, metadata
         FROM `aerosense-twined.greta.sensor_type`
         ORDER BY name
         """
 
-        return self.client.query(query).to_dataframe()["name"].to_list()
+        return self.client.query(query).to_dataframe().to_dict("records")
 
     def get_nodes(self, installation_reference):
         """Get the IDs of the nodes installed on the given installation.
