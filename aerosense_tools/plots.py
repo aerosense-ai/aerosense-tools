@@ -16,14 +16,16 @@ def plot_connection_statistic(df, connection_statistic_name):
     return figure
 
 
-def plot_sensors(df, column_names=None):
+def plot_sensors(df, line_descriptions=None):
     """Plot a line graph of the sensor data from the given dataframe against time. The dataframe must include a
     "datetime" column.
 
     :param pandas.DataFrame df: a dataframe of sensor data filtered for the time period to be plotted
-    :param list|None column_names: the column names to give each sensor of the sensor type. There must be the same number of column names as sensors.
+    :param list|str|None line_descriptions: the descriptions to give each line in the plot. If this is a list, there must be the same number of column names as sensors. If this is a string, it will just be set as the legend title.
     :return plotly.graph_objs.Figure: a line graph of the sensor data against time
     """
+    legend_title = "Legend"
+    y_axis_title = "Raw value"
     original_sensor_names, cleaned_sensor_names = get_cleaned_sensor_column_names(df)
 
     df.rename(
@@ -34,19 +36,27 @@ def plot_sensors(df, column_names=None):
         inplace=True,
     )
 
-    if column_names:
-        df.rename(
-            columns={
-                cleaned_name: column_name for cleaned_name, column_name in zip(cleaned_sensor_names, column_names)
-            },
-            inplace=True,
-        )
+    if line_descriptions:
+        y_axis_title = ""
 
-        figure = px.line(df, x="datetime", y=column_names)
+        if isinstance(line_descriptions, str):
+            legend_title = line_descriptions
+            figure = px.line(df, x="datetime", y=cleaned_sensor_names)
+        else:
+            df.rename(
+                columns={
+                    cleaned_name: column_name
+                    for cleaned_name, column_name in zip(cleaned_sensor_names, line_descriptions)
+                },
+                inplace=True,
+            )
+
+            figure = px.line(df, x="datetime", y=line_descriptions)
+
     else:
         figure = px.line(df, x="datetime", y=cleaned_sensor_names)
 
-    figure.update_layout(xaxis_title="Date/time", yaxis_title="Raw value", legend_title="Legend")
+    figure.update_layout(xaxis_title="Date/time", yaxis_title=y_axis_title, legend_title=legend_title)
     return figure
 
 
