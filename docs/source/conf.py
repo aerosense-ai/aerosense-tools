@@ -10,10 +10,11 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-import re
 import os
+import re
 import sys
 import sphinx_rtd_theme
+
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -33,7 +34,6 @@ extensions = [
     "sphinx.ext.todo",
     "sphinx.ext.coverage",
     "sphinx.ext.viewcode",
-    "sphinx_tabs.tabs",
     "sphinx.ext.mathjax",
     "sphinx.ext.ifconfig",
 ]
@@ -51,8 +51,8 @@ source_suffix = ".rst"
 master_doc = "index"
 
 # General information about the project.
-project = u"aerosense_tools"
-copyright = u"The Aerosense Research Partners"
+project = "aerosense_tools"
+copyright = "The Aerosense Research Partners"
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -197,7 +197,7 @@ latex_elements = {
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-    ("index", "aerosense_tools.tex", u"aerosense_tools", u"OST Aerosense", "manual"),
+    ("index", "aerosense_tools.tex", "aerosense_tools", "OST Aerosense", "manual"),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -225,7 +225,7 @@ latex_documents = [
 
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
-man_pages = [("index", "aerosense_tools", u"aerosense_tools", [u"OST Aerosense"], 1)]
+man_pages = [("index", "aerosense_tools", "aerosense_tools", ["OST Aerosense"], 1)]
 
 # If true, show URL addresses after external links.
 # man_show_urls = False
@@ -240,8 +240,8 @@ texinfo_documents = [
     (
         "index",
         "aerosense_tools",
-        u"aerosense_tools",
-        u"OST Aerosense",
+        "aerosense_tools",
+        "OST Aerosense",
         "aerosense_tools",
         "Functions for querying and processing aerosense data.",
         "Miscellaneous",
