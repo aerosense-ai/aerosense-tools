@@ -1,0 +1,29 @@
+
+// Make a table to contain coordinate values
+//   - with the following columns:
+"id" // integer foreign key
+"reference": {
+    "title": "Reference",
+    "description": "A reference for this geometry, could be unique but need not be (id must be unique)",
+    "type": "string"
+}
+"kind": {
+    "description": "A set of string labels which, if applied, allow you to filter to specific entries",
+    "type": "array",
+    "items": {
+        "type": "string",
+        "enum": ["section", "imu", "unknown"]
+    }
+}
+"geometry": {
+    // a JSON data type column that allows us to splat in either sections data or coordinates data
+}
+
+// <Marcus> Make an aerosense-tools function to add a row to the database from a chunk of JSON contain the coordinates (validate against schema)
+
+// <Marcus> Make a convenience function to convert DAT files into json and upload that too
+
+// <Yuriy> Add relevant geometry for aventa
+
+// <both> Update reference in installations to point to sensor geometry table
+

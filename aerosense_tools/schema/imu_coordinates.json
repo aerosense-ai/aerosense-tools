@@ -1,0 +1,8 @@
+{
+    "title": "IMU location data",
+    "description": "Represents IMU location",
+    "type": "object",
+    "properties": {
+
+    }
+}
