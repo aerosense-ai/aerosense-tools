@@ -2,9 +2,9 @@ import datetime as dt
 import logging
 import numpy as np
 import pandas as pd
-from scipy.interpolate import interp1d
 
 from aerosense_tools.plots import plot_with_layout
+from aerosense_tools.exceptions import EmptyDataFrameError
 
 
 logger = logging.getLogger(__name__)
@@ -13,6 +13,8 @@ logger = logging.getLogger(__name__)
 class RawSignal:
     """A class representing raw data received from data gateway."""
     def __init__(self, dataframe, sensor_type):
+        if dataframe.empty:
+            raise EmptyDataFrameError("Empty DataFrame is not allowed for the RawSignal Class")
         self.dataframe = dataframe
         self.sensor_type = sensor_type
 
@@ -118,11 +120,14 @@ class SensorMeasurementSession:
     """
 
     def __init__(self, dataframe, sensor_type):
+        if dataframe.empty:
+            raise EmptyDataFrameError("Empty DataFrame is not allowed for the SensorMeasurementSession Class")
         self.dataframe = dataframe
         self.sensor_type = sensor_type
         self.start = dataframe.index[0]
         self.end = dataframe.index[-1]
         self.duration = dataframe.index[-1] - dataframe.index[0]
+        self.sensor_statistics = dataframe.agg(["min", "max", "mean", "std"])
 
     def to_constant_timestep(self, time_step, timeseries_start=None):
         """Resample dataframe to the given time step. Linearly interpolates between samples.
@@ -132,16 +137,35 @@ class SensorMeasurementSession:
         :return SensorMeasurementSession: sensor session with resampled and interpolated data
         """
 
-        old_time_vector = self.dataframe.index.values.astype(np.int64)
         new_time_vector = pd.date_range(start=timeseries_start or self.start, end=self.end, freq=time_step)
 
-        new_dataframe = pd.DataFrame(index=new_time_vector)
+        return self.to_new_time_vector(new_time_vector)
 
-        for column in self.dataframe.columns:
-            signal = interp1d(old_time_vector, self.dataframe[column], assume_sorted=True)
-            new_dataframe[column] = signal(new_time_vector.values.astype(np.int64))
+    def to_new_time_vector(self, new_time_vector):
+        """Interpolates the original dataframe onto a new time index.
+
+        :param new_time_vector: the new time index
+        :type new_time_vector: pandas.DatetimeIndex
+        :return: a new SensorMeasurementSession object with the interpolated dataframe
+        :rtype: SensorMeasurementSession
+        """
+
+        new_dataframe = pd.DataFrame(index=new_time_vector)
+        new_dataframe = pd.concat([self.dataframe, new_dataframe], axis=1)
+        new_dataframe = new_dataframe.interpolate("index", limit_area="inside").reindex(new_time_vector)
 
         return SensorMeasurementSession(new_dataframe, self.sensor_type)
+
+    def merge_with_and_interpolate(self, *secondary_sessions):
+        """Merge current session's sensor measurements with measurements from other sensors (secondary sessions)
+        The values from the secondary sessions will be interpolated onto the current session's time vector.
+
+        :return Pandas.DataFrame: Merged dataframe
+        """
+        for secondary_session in secondary_sessions:
+            merged_df = pd.concat([self.dataframe, secondary_session.dataframe], axis=1)
+            merged_df = merged_df.interpolate('index', limit_area="inside").reindex(self.dataframe.index)
+        return merged_df
 
     def trim_session(self, trim_from_start=dt.timedelta(), trim_from_end=dt.timedelta()):
         """Delete first and last measurements from the session
@@ -181,3 +205,5 @@ class SensorMeasurementSession:
         }
         figure = plot_with_layout(plot_df, layout_dict=layout)
         return figure
+
+
