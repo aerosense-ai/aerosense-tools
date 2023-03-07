@@ -1,3 +1,4 @@
+import logging
 import numpy as np
 import pandas as pd
 from scipy.spatial.transform import Rotation as R
@@ -5,8 +6,10 @@ from scipy.signal import find_peaks
 from ahrs.filters import Madgwick, Mahony
 from scipy.linalg import norm
 
+logger = logging.getLogger(__name__)
 
-class BladeIMU():
+
+class BladeIMU:
     """
     A class to process IMU data mounted on a windturbine blade.
 
@@ -28,7 +31,7 @@ class BladeIMU():
         diameter of the blade in meters
     hub_height : float
         height of the hub in meters
-    N : int
+    number_of_samples : int
         number of measurements
     radius : float
         radius of the blade in meters
@@ -51,9 +54,9 @@ class BladeIMU():
 
     Methods
     -------
-    update_acc()
+    decompose_accelerations()
         Decomposes accelerometer signal into centripetal force and gravity vector.
-    update_peaks_mins(message=False)
+    compute_peaks_mins(message=False)
         Peak detection helper function. Calls get_acc_peaks_mins for each axis.
     get_acc_peaks_mins(acc,time,N,distance=50,width=30,prominence=10)
         Peak detection helper function. Calls find_peaks from scipy.signal.
@@ -81,77 +84,46 @@ class BladeIMU():
         Converts the quaternion to euler angles.
     """
 
-    def __init__(self, time, acc_mps2, gyr_rps, standstill=False, distance_from_tip=1.6, blade_diameter=12.8,
-                 hub_height=18):
+    def __init__(self, time, acc_mps2, gyr_rps, standstill=False):
         self.time = time
         self.acc_mps2 = acc_mps2
         self.gyr_rps = gyr_rps
         self.standstill = standstill
-        self.radius = blade_diameter / 2 - distance_from_tip
-        self.hub_height = hub_height
-        self.N = len(time)
-        if self.N != len(acc_mps2[0]) or self.N != len(gyr_rps[0]):
+
+        self.number_of_samples = len(time)
+        if self.number_of_samples != len(acc_mps2[0]) or self.number_of_samples != len(gyr_rps[0]):
             raise ValueError('Data arrays must be of same length')
 
-        # Peak detection requires blade to be in motion.
-        # gyr_rps[2] (z-axis) can be used to check for standstill as it presumably points closest to the direction of the rotational axis.
-        threshold = 0.01
-        if ((abs(self.gyr_rps[2]) < threshold).any() or standstill):
-            self.standstill = True
-            print('Standstill detected')
-        else:
-            print('Blade in motion')
-            self.pitch = []
-            self.azimuth = []
-            self.acc_peak_locations = []
-            self.acc_min_locations = []
-            self.acc_peaks = []
-            self.acc_mins = []
-            self.acc_centrip = []
-            self.acc_g = []
-            self.update_acc()
+        self.standstill = standstill or self.test_for_standstill(gyr_rps)
 
-    def update_acc(self):
+        if not self.standstill:
+            logger.info('Blade is in motion')
+            acc_peaks, acc_mins, _, _ = self.compute_peaks_mins()
+            self.acc_centrip, self.acc_g = self.decompose_accelerations(acc_mps2, acc_peaks, acc_mins)
+            self.pitch = self.calculate_pitch()
+            self.azimuth = self.calculate_azimuth()
+    @staticmethod
+    def test_for_standstill(gyr_rps, threshold=0.01):
+        """gyr_rps[2] (z-axis) can be used to check for standstill as it presumably points closest to the direction
+        of the rotational axis."""
+        if (abs(gyr_rps[2]) < threshold).any():
+            logger.info('Standstill detected')
+            return True
+        else:
+            return False
+
+    @staticmethod
+    def decompose_accelerations(acc_mps2, acc_peaks, acc_mins):
         '''
         Decomposes accelerometer signal into centripetal force and gravity vector.
         '''
-        self.update_peaks_mins(message=True)
-        self.acc_centrip = ((self.acc_peaks + self.acc_mins) / 2.)
-        self.acc_g = self.acc_mps2 - self.acc_centrip
+        acc_centrip = ((acc_peaks + acc_mins) / 2.)
+        acc_g = acc_mps2 - acc_centrip
 
-    def update_peaks_mins(self, message=False):
-        '''
-        Peak detection helper function. Calls get_acc_peaks_mins for each axis.
-        '''
-        self.acc_peak_locations = []
-        self.acc_min_locations = []
-        self.acc_peaks = []
-        self.acc_mins = []
-        w_norm = np.mean((self.gyr_rps[0] ** 2 + self.gyr_rps[1] ** 2 + self.gyr_rps[2] ** 2) ** 0.5)
-        distance = 50 * np.pi / w_norm
+        return acc_centrip, acc_g
 
-        axs = ['x', 'y', 'z']  # Just for printing out information
-        for i in range(3):
-            if i == 2:
-                detect = self.get_acc_peaks_mins(self.acc_mps2[i], self.time, self.N, width=40)
-            else:
-                detect = self.get_acc_peaks_mins(self.acc_mps2[i], self.time, self.N, distance=distance, width=30,
-                                                 prominence=10)
-            # else : detect = self.get_acc_peaks_mins(self.acc_mps2[i],self.time,self.N,width=30)
-            acc_peak_loc_i, acc_peaks_i, acc_min_loc_i, acc_mins_i = detect
-            if message and len(acc_peak_loc_i) == 0: print("No peaks found for {}-axis".format(axs[i]))
-
-            self.acc_peak_locations.append(acc_peak_loc_i)
-            self.acc_min_locations.append(acc_min_loc_i)
-            self.acc_peaks.append(acc_peaks_i)
-            self.acc_mins.append(acc_mins_i)
-
-        self.acc_peak_locations = np.asarray(self.acc_peak_locations, dtype='object')
-        self.acc_min_locations = np.asarray(self.acc_min_locations, dtype='object')
-        self.acc_peaks = np.asarray(self.acc_peaks, dtype='object')
-        self.acc_mins = np.asarray(self.acc_mins, dtype='object')
-
-    def get_acc_peaks_mins(self, signal, time, sample_len, height=None, threshold=None, distance=None, \
+    @staticmethod
+    def get_acc_peaks_mins(signal, time, number_of_samples, height=None, threshold=None, distance=None,
                            prominence=None, width=None, wlen=None, rel_height=0.5, plateau_size=None):
         '''
         Get peak and minima locations of a signal, as well as an interpolated signal between the points.
@@ -175,17 +147,13 @@ class BladeIMU():
             Function interpolated between min points.
         '''
 
-        N = sample_len
-
-        shape = signal.shape
-        peaks_interp = np.empty(shape)
-        mins_interp = np.empty(shape)
-
         # Find peak locations of ay
-        peak_locations, _ = find_peaks(signal[0:N], height=height, threshold=threshold, distance=distance, \
+        peak_locations, _ = find_peaks(signal[0:number_of_samples], height=height, threshold=threshold,
+                                       distance=distance,
                                        prominence=prominence, width=width, wlen=wlen, rel_height=rel_height,
                                        plateau_size=plateau_size)
-        min_locations, _ = find_peaks(-signal[0:N], height=height, threshold=threshold, distance=distance, \
+        min_locations, _ = find_peaks(-signal[0:number_of_samples], height=height, threshold=threshold,
+                                      distance=distance,
                                       prominence=prominence, width=width, wlen=wlen, rel_height=rel_height,
                                       plateau_size=plateau_size)
 
@@ -194,12 +162,50 @@ class BladeIMU():
             peaks_interp = np.interp(time, time[peak_locations], signal[peak_locations])
             mins_interp = np.interp(time, time[min_locations], signal[min_locations])
         else:
-            peaks_interp = np.zeros(self.N)
-            mins_interp = np.zeros(self.N)
+            peaks_interp = np.zeros(number_of_samples)
+            mins_interp = np.zeros(number_of_samples)
 
         return peak_locations, peaks_interp, min_locations, mins_interp
 
-    def calculate_precone(self):
+    def compute_peaks_mins(self):
+        '''
+        Peak detection helper function. Calls get_acc_peaks_mins for each axis.
+        TODO Test how generalisable this code is.
+        '''
+        acc_peak_locations = []
+        acc_min_locations = []
+        acc_peaks = []
+        acc_mins = []
+        w_norm = np.mean((self.gyr_rps[0] ** 2 + self.gyr_rps[1] ** 2 + self.gyr_rps[2] ** 2) ** 0.5)
+        distance = 50 * np.pi / w_norm
+
+        axs = ['x', 'y', 'z']
+        for i in range(3):
+            # WARNING: This looks like some ad-hoc peak detection solution. Might not generalise!!!
+            if i == 2:
+                detect = self.get_acc_peaks_mins(self.acc_mps2[i], self.time, self.number_of_samples, width=40)
+            else:
+                detect = self.get_acc_peaks_mins(self.acc_mps2[i], self.time, self.number_of_samples, distance=distance, width=30,
+                                                 prominence=10)
+
+            acc_peak_loc_i, acc_peaks_i, acc_min_loc_i, acc_mins_i = detect
+            if len(acc_peak_loc_i) == 0:
+                logger.warning("No peaks found for {}-axis".format(axs[i]))
+
+            acc_peak_locations.append(acc_peak_loc_i)
+            acc_min_locations.append(acc_min_loc_i)
+            acc_peaks.append(acc_peaks_i)
+            acc_mins.append(acc_mins_i)
+
+        acc_peak_locations = np.asarray(acc_peak_locations, dtype='object')
+        acc_min_locations = np.asarray(acc_min_locations, dtype='object')
+        acc_peaks = np.asarray(acc_peaks, dtype='object')
+        acc_mins = np.asarray(acc_mins, dtype='object')
+
+        return acc_peaks, acc_mins, acc_peak_locations, acc_min_locations
+
+    @staticmethod
+    def calculate_precone(acc_mps2, gyr_rps):
         """
         Finds the precone angle of the blade (active rotation).
         Steps taken before calling this function:
@@ -212,14 +218,15 @@ class BladeIMU():
         precone:
             float - Precone angle of the blade.
         """
-        if (self.standstill == False):
+        if not BladeIMU.test_for_standstill(gyr_rps):
             raise ValueError('Blade must be in standstill')
 
-        precone = (np.arctan2(self.acc_mps2[2],
-                              self.acc_mps2[1]) * 180 / np.pi).mean()  # mean of precone angle in degrees
+        precone = (np.arctan2(acc_mps2[2],
+                              acc_mps2[1]) * 180 / np.pi).mean()  # mean of precone angle in degrees
         return precone
 
-    def calculate_deflection(self):
+    @staticmethod
+    def calculate_deflection(acc_mps2, gyr_rps):
         """
         Estimates the flapwise deflections.
         Only delivers accurate results during fast rotational speeds.
@@ -229,11 +236,11 @@ class BladeIMU():
         deflections:
             float - Estimation of flapwise deflection
         """
-        if (self.standstill == True):
+        if BladeIMU.test_for_standstill(gyr_rps):
             raise ValueError('Blade must be in motion')
 
-        deflection = 180 - (np.arctan2(self.acc_mps2[2].mean(),
-                                       self.acc_mps2[1].mean()) * 180 / np.pi)  # mean of deflection angle in degrees
+        deflection = 180 - (np.arctan2(acc_mps2[2].mean(),
+                                       acc_mps2[1].mean()) * 180 / np.pi)  # mean of deflection angle in degrees
         return deflection
 
     def calculate_pitch(self):
@@ -247,11 +254,10 @@ class BladeIMU():
         pitch:
             1xN np.ndarray - Contains the pitch angle of the blade.
         """
-        if (self.standstill == True):
+        if self.standstill:
             raise ValueError('Blade must be in motion')
 
         pitch = (np.arctan2(self.gyr_rps[0], -self.gyr_rps[2]) * 180 / np.pi)  # pitch angle in degrees
-        self.pitch = pitch
         return pitch
 
     def calculate_azimuth(self):
@@ -265,20 +271,20 @@ class BladeIMU():
         azimuth:
             1xN np.ndarray - Contains the azimuth angle of the blade.
         """
-        if (self.standstill == True):
+        if self.standstill:
             raise ValueError('Blade must be in motion')
-        self.update_acc()
+
         ag_x = -self.acc_g[0]
         ag_y = self.acc_g[1]
 
         azimuth = np.array(
-            [np.arctan2(ag_x[i], ag_y[i]) * 180 / np.pi for i in range(self.N)])  # azimuth angle in degrees
+            [np.arctan2(ag_x[i], ag_y[i]) * 180 / np.pi for i in range(self.number_of_samples)])  # azimuth angle in degrees
         # change range from [180,-180] to [0,-360]
         azimuth = -azimuth - 180
-        self.azimuth = azimuth
         return azimuth
 
-    def get_height(self, azimuth):
+    @staticmethod
+    def get_height(azimuth, hub_height, radius):
         """
         Uses azimuthal angle to determine height of the sense relative to the ground.
 
@@ -292,7 +298,7 @@ class BladeIMU():
         height: Nx1 np.ndarray
             Height of sensor relative to the ground.
         """
-        return self.hub_height - self.radius * np.sin(azimuth * np.pi / 180 - np.pi / 2)
+        return hub_height - radius * np.sin(azimuth * np.pi / 180 - np.pi / 2)
 
     def calibrate_gyro(self, bias=np.array([[0], [0], [0]])):
         self.gyr_rps += bias
@@ -316,7 +322,7 @@ class BladeIMU():
         rot_gyrT = np.zeros(gyrT.shape)
         rot_accT = np.zeros(accT.shape)
 
-        for i in range(self.N):
+        for i in range(self.number_of_samples):
             rot = R.from_euler('xyz', angles[i], degrees=True)  # intrinsic
             rot_gyrT[i] = rot.apply(gyrT[i])
             rot_accT[i] = rot.apply(accT[i])
@@ -324,10 +330,11 @@ class BladeIMU():
         self.acc_mps2 = np.transpose(rot_accT)
         self.gyr_rps = np.transpose(rot_gyrT)
 
-        if (self.standstill == False):
-            self.update_acc()  # Important!
+        if not self.standstill:
+            acc_peaks, acc_mins, _, _ = self.compute_peaks_mins()
+            self.acc_centrip, self.acc_g = self.decompose_accelerations(self.acc_mps2, acc_peaks, acc_mins)
 
-    def blade_velocity(self):
+    def blade_velocity(self, acc_peak_locations, acc_min_locations):
         '''
         Makes use of the peaks and minima caused by oscillations due to the gravity vector to calculate the IMU's
         IMU angular velocity.
@@ -338,9 +345,9 @@ class BladeIMU():
         w_hat: Nx1 np.ndarray
             Estimated rotational velocity
         '''
-        w_hat = np.tile(np.nan, self.N)
+        w_hat = np.tile(np.nan, self.number_of_samples)
         w_hat_idx = np.concatenate(
-            [self.acc_peak_locations[1], self.acc_min_locations[1]])  # Get peak locations from all axes (x,y,z)
+            [acc_peak_locations[1], acc_min_locations[1]])  # Get peak locations from all axes (x,y,z)
         w_hat_idx = w_hat_idx.astype('int')
         for i in range(1, len(w_hat_idx)):
             w_hat[w_hat_idx[i]] = 1. / (self.time[w_hat_idx[i]] - self.time[w_hat_idx[i - 1]]) * 2 * np.pi  # w = 2*pi/T
@@ -381,7 +388,6 @@ class BladeIMU():
                 Nx4 np.ndarray - Quaternion representation of the orientation.
 
         '''
-        self.update_acc()
         w_norm = norm(self.gyr_rps, axis=0)
         if no_ac:
             w_threshold = 0.2
@@ -392,27 +398,30 @@ class BladeIMU():
         acc_g_T = np.transpose(self.acc_g).astype('float')
 
         if ahrs == 'Madgwick':
-            filter = Madgwick(beta=beta, frequency=sample_rate)
+            filter_imu = Madgwick(beta=beta, frequency=sample_rate)
         elif ahrs == 'Mahony':
-            filter = Mahony(k_P=k_P, k_I=k_I, frequency=sample_rate)
+            filter_imu = Mahony(k_P=k_P, k_I=k_I, frequency=sample_rate)
+        else:
+            raise ValueError("Unknown AHRS filter")
 
-        Q = np.tile(q0, (self.N, 1))
-        for t in range(1, self.N):
+        Q = np.tile(q0, (self.number_of_samples, 1))
+        for t in range(1, self.number_of_samples):
             if w_norm[t] > w_threshold:
-                Q[t] = filter.updateIMU(Q[t - 1], gyr=gyr_T[t], acc=acc_g_T[t])
+                Q[t] = filter_imu.updateIMU(Q[t - 1], gyr=gyr_T[t], acc=acc_g_T[t])
             else:
-                Q[t] = filter.updateIMU(Q[t - 1], gyr=gyr_T[t], acc=acc_T[t])
+                Q[t] = filter_imu.updateIMU(Q[t - 1], gyr=gyr_T[t], acc=acc_T[t])
 
         orientation = Q
 
         if euler:
             # Calculate orientations as euler angles
-            orientation = self.q_as_euler(orientation)
+            orientation = BladeIMU.q_as_euler(orientation)
             # change range from [180,-180] to [0,-360]
             orientation[2][orientation[2] > 0] -= 360
         return orientation
 
-    def q_as_euler(self, Q):
+    @staticmethod
+    def q_as_euler(Q):
         """
         Converts an array of Quaternions to their corresponding Euler angles.
         The conversion follows the Tait-Bryan (or intrinsic zyx / extrinsic XYZ) convention.
@@ -447,8 +456,23 @@ class BladeIMU():
 class PostProcess:
 
     @staticmethod
-    def processIMU(imu_signal):
-        imu_data = imu_signal.dataframe
-        processed_IMU = imu_data
-        return processed_IMU
+    def process_imu(acc_signal, gyro_signal, imu_coordinates, turbine_data):
+        imu_data=acc_signal.merge_with_and_interpolate(gyro_signal)
+
+        #TODO introduce imu rotations based on imu_coordinates and turbine_data["preconce_angle"]
+        imu = BladeIMU(
+            time=imu_data.index,
+            acc_mps2=imu_data[acc_signal.dataframe.columns],
+            gyr_rps=imu_data[gyro_signal.dataframe.columns]
+        )
+
+        imu_data['pitch'] = imu.pitch
+        imu_data['azimuth'] = imu.azimuth
+        imu_data['height'] = imu.get_height(
+            imu_data['azimuth'],
+            hub_height=turbine_data["hub_height"],
+            radius=imu_coordinates["r-coordinate"]
+        )
+
+        return imu_data
 
