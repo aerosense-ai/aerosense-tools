@@ -84,11 +84,11 @@ class BladeIMU:
         Converts the quaternion to euler angles.
     """
 
-    def __init__(self, time, acc_mps2, gyr_rps, standstill=False):
+    def __init__(self, time, acc_mps2, gyr_rps, angles=None, standstill=False):
         self.time = time
         self.acc_mps2 = acc_mps2
         self.gyr_rps = gyr_rps
-        self.standstill = standstill
+        self.angles = angles or [0, 0, 0]
 
         self.number_of_samples = len(time)
         if self.number_of_samples != len(acc_mps2[0]) or self.number_of_samples != len(gyr_rps[0]):
@@ -96,12 +96,22 @@ class BladeIMU:
 
         self.standstill = standstill or self.test_for_standstill(gyr_rps)
 
+        # TODO Rotate can be refactored to avoid 3 X number_of_samples of samples input
+        self.rotate(
+            [
+                angles[0] * np.ones(self.number_of_samples),
+                angles[1] * np.ones(self.number_of_samples),
+                angles[2] * np.ones(self.number_of_samples)
+            ]
+        )
+        # TODO Compute azimuth in standstill
         if not self.standstill:
             logger.info('Blade is in motion')
             acc_peaks, acc_mins, _, _ = self.compute_peaks_mins()
             self.acc_centrip, self.acc_g = self.decompose_accelerations(acc_mps2, acc_peaks, acc_mins)
             self.pitch = self.calculate_pitch()
             self.azimuth = self.calculate_azimuth()
+
     @staticmethod
     def test_for_standstill(gyr_rps, threshold=0.01):
         """gyr_rps[2] (z-axis) can be used to check for standstill as it presumably points closest to the direction
@@ -330,10 +340,6 @@ class BladeIMU:
         self.acc_mps2 = np.transpose(rot_accT)
         self.gyr_rps = np.transpose(rot_gyrT)
 
-        if not self.standstill:
-            acc_peaks, acc_mins, _, _ = self.compute_peaks_mins()
-            self.acc_centrip, self.acc_g = self.decompose_accelerations(self.acc_mps2, acc_peaks, acc_mins)
-
     def blade_velocity(self, acc_peak_locations, acc_min_locations):
         '''
         Makes use of the peaks and minima caused by oscillations due to the gravity vector to calculate the IMU's
@@ -459,11 +465,11 @@ class PostProcess:
     def process_imu(acc_signal, gyro_signal, imu_coordinates, turbine_data):
         imu_data=acc_signal.merge_with_and_interpolate(gyro_signal)
 
-        #TODO introduce imu rotations based on imu_coordinates and turbine_data["preconce_angle"]
         imu = BladeIMU(
             time=imu_data.index,
             acc_mps2=imu_data[acc_signal.dataframe.columns],
-            gyr_rps=imu_data[gyro_signal.dataframe.columns]
+            gyr_rps=imu_data[gyro_signal.dataframe.columns],
+            angles=imu_coordinates["angles"]
         )
 
         imu_data['pitch'] = imu.pitch
