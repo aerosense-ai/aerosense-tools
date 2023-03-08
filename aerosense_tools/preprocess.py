@@ -10,11 +10,11 @@ from aerosense_tools.exceptions import EmptyDataFrameError
 logger = logging.getLogger(__name__)
 
 
-class RawSignal:
-    """A class representing raw data received from data gateway."""
+class RawData:
+    """A class representing raw data received from a specific sensor through the data gateway."""
     def __init__(self, dataframe, sensor_type):
         if dataframe.empty:
-            raise EmptyDataFrameError("Empty DataFrame is not allowed for the RawSignal Class")
+            raise EmptyDataFrameError("Empty DataFrame is not allowed for the RawData Class")
         self.dataframe = dataframe
         self.sensor_type = sensor_type
 
@@ -30,56 +30,41 @@ class RawSignal:
 
         self.dataframe[self.dataframe.index.to_series().diff() > threshold] = np.NaN
 
-    def filter_outliers(self, window, standard_deviation_multiplier):
-        """A very primitive filter. Removes data points outside the confidence interval using a rolling median and
-        standard deviation.
-
-        :param int window: window (number of samples) for rolling median and standard deviation
-        :param float standard_deviation_multiplier: multiplier to the rolling standard deviation
-        :return pandas.Dataframe: inplace filtered dataframe
-        """
-        rolling_median = self.dataframe.rolling(window).median()
-        rolling_std = self.dataframe.rolataframeling(window).std()
-        # TODO define filtering rule using rolling df here
-        self.dataframe = self.dataframe[
-            (self.dataframe <= rolling_median + standard_deviation_multiplier * rolling_std)
-            & (self.dataframe >= rolling_median - standard_deviation_multiplier * rolling_std)
-        ]
-
-    def measurement_to_variable(self, sensor_conversion_constants=None):
-        """Transform fixed point values to a physical variable.
+    def convert_int_to_measurement(self, sensor_conversion_constants=None):
+        """Convert int value (originally from bytes) to a float value representing a measured physical
+        variable in SI units.
 
         :param dict sensor_conversion_constants: dictionary containing calibrated conversion constants
-        :return pandas.Dataframe: inplace transformed dataframe with raw values transformed to variable values
+        :return pandas.Dataframe: inplace transformed dataframe with raw data transformed to variable values
         """
-        # TODO These values should be picked up from the session configuration metadata
-        # TODO Refactor the name of the function to values_to_variables
+
         gravitational_acceleration = 9.81  # [m/s²]
         differential_pressure_range = 2 * 6000
         differential_pressure_offset = 32767
-        gyroscope_sensitivity = 16.4  # Typ Gyro sensitivity LSB/deg/s
+        gyroscope_sensitivity = 16.4  # Typ. Gyro sensitivity LSB/deg/s
         accelerometer_sensitivity = 2048  # Typ. Accelerometer sensitivity LSB/g
 
         default_conversion_constants = {
-            "barometer": 40.96,  # [Pa]
-            "barometer_thermometer": 100,  # [Celsius]
-            "differential_barometer": (58982 - 6553) / differential_pressure_range,  # [Pa]
-            "accelerometer": accelerometer_sensitivity / gravitational_acceleration,  # [m/s²]
-            "gyroscope": gyroscope_sensitivity * 180 / np.pi,  # [s⁻¹]
+            "barometer": 40.96,  # [Pa]⁻¹
+            "barometer_thermometer": 100,  # [Celsius]⁻¹
+            "differential_barometer": (58982 - 6553) / differential_pressure_range,  # [Pa]⁻¹
+            "differential_barometer_offset": differential_pressure_offset,
+            "accelerometer": accelerometer_sensitivity / gravitational_acceleration,  # [m/s²]⁻¹
+            "gyroscope": gyroscope_sensitivity * 180 / np.pi,  # [s⁻¹] ⁻¹
             "magnetometer": 1,  # TODO this is tbd.
         }
         sensor_conversion_constants = sensor_conversion_constants or default_conversion_constants
 
         if self.sensor_type == "differential_barometer":
-            self.dataframe -= differential_pressure_offset
+            self.dataframe -= sensor_conversion_constants["differential_barometer_offset"]
 
         self.dataframe /= sensor_conversion_constants[self.sensor_type]
 
     def extract_measurement_sessions(self, threshold=dt.timedelta(seconds=60)):
         """Extract sessions (continuous measurement periods) from raw data.
 
-        :param datetime.timedelta threshold: Maximum gap between two consecutive measurement samples
-        :return  (list, pandas.DataFrame): List with SensorMeasurementSession objects, a dataframe with sessions' start and end times
+        :param datetime.timedelta threshold: Maximum gap between two consecutive measurement samples :return  (list,
+        pandas.DataFrame): List with SensorMeasurementSession objects, a dataframe with sessions' start and end times
         """
 
         measurement_sessions = []
@@ -181,6 +166,23 @@ class SensorMeasurementSession:
         trimmed_dataframe = self.dataframe[time_window]
         return SensorMeasurementSession(trimmed_dataframe, self.sensor_type)
 
+    def filter_outliers(self, window, acceptable_deviation):
+        """A very primitive filter. Removes data points outside the confidence interval of a rolling median +/-
+        acceptable_deviation.
+
+        :param int window: window (number of samples) for rolling median and standard deviation
+        :param float acceptable_deviation: multiplier to the rolling standard deviation
+        :return pandas.Dataframe: filtered dataframe
+        """
+        rolling_median = self.dataframe.rolling(window).median()
+
+        filtered_dataframe = self.dataframe[
+            (self.dataframe <= rolling_median + acceptable_deviation)
+            & (self.dataframe >= rolling_median - acceptable_deviation)
+            ]
+
+        return filtered_dataframe
+
     def plot(self, sensor_types_metadata, sensor_names=None, plot_start_offset=dt.timedelta(), plot_max_time=None):
         """Plots the session dataframe with plotly.
 
@@ -205,5 +207,3 @@ class SensorMeasurementSession:
         }
         figure = plot_with_layout(plot_df, layout_dict=layout)
         return figure
-
-

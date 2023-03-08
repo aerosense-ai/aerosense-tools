@@ -5,7 +5,7 @@ import datetime as dt
 import numpy as np
 import pandas as pd
 
-from aerosense_tools.preprocess import RawSignal
+from aerosense_tools.preprocess import RawData
 from aerosense_tools.preprocess import SensorMeasurementSession
 
 REPOSITORY_ROOT = os.path.dirname(os.path.dirname(__file__))
@@ -57,7 +57,7 @@ class TestPreProcess(unittest.TestCase):
         """Test that instantiating the RawSignal and SensorMeasurementSession classes with an empty dataframe raises
         a ValueError."""
         data = pd.DataFrame()
-        self.assertRaises(ValueError, RawSignal, data, "test_sensor")
+        self.assertRaises(ValueError, RawData, data, "test_sensor")
         self.assertRaises(ValueError, SensorMeasurementSession, data, "test_session")
 
     def test_extract_measurement_session(self):
@@ -67,7 +67,7 @@ class TestPreProcess(unittest.TestCase):
         data2 = self.sample_timeseries(TEST_START_TIME + dt.timedelta(minutes=30), TEST_DURATION, TEST_SAMPLING_STEP)
         data = data1.append(data2)
 
-        signal=RawSignal(data, "test_sensor")
+        signal=RawData(data, "test_sensor")
         measurement_sessions, measurement_session_times = signal.extract_measurement_sessions()
 
         self.assertEqual(measurement_session_times['start'].loc[1], TEST_START_TIME + dt.timedelta(minutes=30))
@@ -97,8 +97,8 @@ class TestPreProcess(unittest.TestCase):
             TEST_DURATION-dt.timedelta(seconds=0.5),
             TEST_SAMPLING_STEP)
 
-        signal1 = RawSignal(data1, "test_sensor_1")
-        signal2 = RawSignal(data2, "test_sensor_2")
+        signal1 = RawData(data1, "test_sensor_1")
+        signal2 = RawData(data2, "test_sensor_2")
         measurement_sessions1, _ = signal1.extract_measurement_sessions()
         measurement_sessions2, _ = signal2.extract_measurement_sessions()
 
