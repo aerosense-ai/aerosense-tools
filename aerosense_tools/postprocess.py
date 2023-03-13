@@ -88,7 +88,7 @@ class BladeIMU:
         self.time = time
         self.acc_mps2 = acc_mps2
         self.gyr_rps = gyr_rps
-        self.angles = [0, 0, 0] #angles or issues to initiate the self.rotate
+        # self.angles = [0, 0, 0] or angles # issues to initiate the self.rotate
 
         self.number_of_samples = len(time)
         if self.number_of_samples != len(acc_mps2[0]) or self.number_of_samples != len(gyr_rps[0]):
@@ -96,14 +96,14 @@ class BladeIMU:
 
         self.standstill = standstill or self.test_for_standstill(gyr_rps)
 
-        # TODO Rotate can be refactored to avoid 3 X number_of_samples of samples input
-        self.rotate(
-            [
-                angles[0] * np.ones(self.number_of_samples),
-                angles[1] * np.ones(self.number_of_samples),
-                angles[2] * np.ones(self.number_of_samples)
-            ]
-        )
+        # # TODO Rotate can be refactored to avoid 3 X number_of_samples of samples input
+        # self.rotate(
+        #     [
+        #         angles[0] * np.ones(self.number_of_samples),
+        #         angles[1] * np.ones(self.number_of_samples),
+        #         angles[2] * np.ones(self.number_of_samples)
+        #     ]
+        # )
         # TODO Compute azimuth in standstill
         if not self.standstill:
             logger.info('Blade is in motion')
