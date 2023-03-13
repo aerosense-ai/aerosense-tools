@@ -29,12 +29,12 @@ def generate_time_range(time_range, custom_start_date=None, custom_end_date=None
     :return (datetime.datetime, datetime.datetime, bool): the start and finish datetimes
     """
     if time_range == "All time":
-        return datetime.datetime.min, datetime.datetime.now()
+        return datetime.datetime.min, datetime.datetime.utcnow()
 
     if time_range == "Custom":
         return custom_start_date, custom_end_date
 
-    finish = datetime.datetime.now()
+    finish = datetime.datetime.utcnow()
     start = finish - TIME_RANGE_OPTIONS[time_range]
     return start, finish
 
