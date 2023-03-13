@@ -88,7 +88,7 @@ class BladeIMU:
         self.time = time
         self.acc_mps2 = acc_mps2
         self.gyr_rps = gyr_rps
-        self.angles = angles or [0, 0, 0]
+        self.angles = [0, 0, 0] #angles or issues to initiate the self.rotate
 
         self.number_of_samples = len(time)
         if self.number_of_samples != len(acc_mps2[0]) or self.number_of_samples != len(gyr_rps[0]):
