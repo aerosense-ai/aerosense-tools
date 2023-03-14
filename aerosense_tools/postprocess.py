@@ -465,10 +465,13 @@ class PostProcess:
     def process_imu(acc_signal, gyro_signal, imu_coordinates, turbine_data):
         imu_data=acc_signal.merge_with_and_interpolate(gyro_signal)
 
+        # NOTE: using float seconds is not very precise
+        imu_time = (imu_data.index.astype(np.int64) / 10**9) - imu_data.index[0].timestamp()
+
         imu = BladeIMU(
-            time=imu_data.index,
-            acc_mps2=imu_data[acc_signal.dataframe.columns],
-            gyr_rps=imu_data[gyro_signal.dataframe.columns],
+            time=imu_time,
+            acc_mps2=imu_data[acc_signal.dataframe.columns].values.T,
+            gyr_rps=imu_data[gyro_signal.dataframe.columns].values.T,
             angles=imu_coordinates["angles"]
         )
 
