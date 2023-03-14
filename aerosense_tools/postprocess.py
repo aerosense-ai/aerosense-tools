@@ -462,16 +462,35 @@ class BladeIMU:
 class PostProcess:
 
     @staticmethod
-    def process_imu(acc_signal, gyro_signal, imu_coordinates, turbine_data):
-        imu_data=acc_signal.merge_with_and_interpolate(gyro_signal)
+    def process_imu(accelerometer_session, gyrometer_session, imu_coordinates, turbine_data):
+        """
+        Process IMU data and return a DataFrame with additional columns containing blade section position.
+
+        Parameters
+        ----------
+        accelerometer_session : SensorMeasurementSession
+            Session containing accelerometer data.
+        gyrometer_session : SensorMeasurementSession
+            Session containing gyrometer data.
+        imu_coordinates : dict
+            Dictionary containing information about the IMU coordinates.
+        turbine_data : dict
+            Dictionary containing information about the turbine.
+
+        Returns
+        -------
+        pandas.DataFrame
+            The processed IMU data.
+        """
+        imu_data=accelerometer_session.merge_with_and_interpolate(gyrometer_session)
 
         # NOTE: using float seconds is not very precise
         imu_time = (imu_data.index.astype(np.int64) / 10**9) - imu_data.index[0].timestamp()
 
         imu = BladeIMU(
             time=imu_time,
-            acc_mps2=imu_data[acc_signal.dataframe.columns].values.T,
-            gyr_rps=imu_data[gyro_signal.dataframe.columns].values.T,
+            acc_mps2=imu_data[accelerometer_session.dataframe.columns].values.T,
+            gyr_rps=imu_data[gyrometer_session.dataframe.columns].values.T,
             angles=imu_coordinates["angles"]
         )
 
