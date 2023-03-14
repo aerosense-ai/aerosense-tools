@@ -1,5 +1,3 @@
-import json
-import os
 import unittest
 import datetime as dt
 import numpy as np
@@ -8,10 +6,7 @@ import pandas as pd
 from aerosense_tools.preprocess import RawData
 from aerosense_tools.preprocess import SensorMeasurementSession
 
-REPOSITORY_ROOT = os.path.dirname(os.path.dirname(__file__))
-TEST_START_TIME = dt.datetime(2020, 5, 4)
-TEST_DURATION = dt.timedelta(seconds=1)
-TEST_SAMPLING_STEP = dt.timedelta(seconds=0.1)
+from tests import TEST_DURATION, TEST_START_TIME, TEST_SAMPLING_STEP
 
 
 class TestPreProcess(unittest.TestCase):
@@ -42,16 +37,6 @@ class TestPreProcess(unittest.TestCase):
         """
         base_data = self.sample_timeseries(TEST_START_TIME, TEST_DURATION, TEST_SAMPLING_STEP)
         return base_data
-
-    def example_metadata(self):
-        """Reads in an example installation metadata file in JSON format.
-
-        Returns:
-            dict: A dictionary containing the metadata."""
-        metadata_path=os.path.join(REPOSITORY_ROOT, "example_installation_metadata.json")
-        with open(metadata_path, "r") as in_file:
-            session_metadata = json.load(in_file)
-        return session_metadata
 
     def test_classes_with_empty_dataframe(self):
         """Test that instantiating the RawSignal and SensorMeasurementSession classes with an empty dataframe raises
