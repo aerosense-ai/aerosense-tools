@@ -88,7 +88,7 @@ class BladeIMU:
         self.time = time
         self.acc_mps2 = acc_mps2
         self.gyr_rps = gyr_rps
-        # self.angles = [0, 0, 0] or angles # issues to initiate the self.rotate
+        self.angles = [0, 0, 0] or angles # issues to initiate the self.rotate
 
         self.number_of_samples = len(time)
         if self.number_of_samples != len(acc_mps2[0]) or self.number_of_samples != len(gyr_rps[0]):
@@ -97,13 +97,14 @@ class BladeIMU:
         self.standstill = standstill or self.test_for_standstill(gyr_rps)
 
         # # TODO Rotate can be refactored to avoid 3 X number_of_samples of samples input
-        # self.rotate(
-        #     [
-        #         angles[0] * np.ones(self.number_of_samples),
-        #         angles[1] * np.ones(self.number_of_samples),
-        #         angles[2] * np.ones(self.number_of_samples)
-        #     ]
-        # )
+        # This doesn't work
+        self.rotate(
+            [
+                angles[0] * np.ones(self.number_of_samples),
+                angles[1] * np.ones(self.number_of_samples),
+                angles[2] * np.ones(self.number_of_samples)
+            ]
+        )
         # TODO Compute azimuth in standstill
         if not self.standstill:
             logger.info('Blade is in motion')
@@ -215,7 +216,7 @@ class BladeIMU:
         return acc_peaks, acc_mins, acc_peak_locations, acc_min_locations
 
     @staticmethod
-    def calculate_precone(acc_mps2, gyr_rps):
+    def calculate_precone(self):
         """
         Finds the precone angle of the blade (active rotation).
         Steps taken before calling this function:
@@ -228,12 +229,12 @@ class BladeIMU:
         precone:
             float - Precone angle of the blade.
         """
-        if not BladeIMU.test_for_standstill(gyr_rps):
+        if not BladeIMU.test_for_standstill(self.gyr_rps):
             raise ValueError('Blade must be in standstill')
 
-        precone = (np.arctan2(acc_mps2[2],
-                              acc_mps2[1]) * 180 / np.pi).mean()  # mean of precone angle in degrees
-        return precone
+        precone = (np.arctan2(self.acc_mps2[2],
+                              self.acc_mps2[1]) * 180 / np.pi).mean()  # mean of precone angle in degrees
+        return self.precone
 
     @staticmethod
     def calculate_deflection(acc_mps2, gyr_rps):
@@ -316,6 +317,7 @@ class BladeIMU:
     def calibrate_acc(self, bias=np.array([[0], [0], [0]])):
         self.acc_mps2 += bias
 
+    # TODO Depending on the size of angles: if 3x1: Make a static rotation, else should be the correct length
     def rotate(self, angles):
         '''
         Rotates the IMU's coordinates with given euler angles.
