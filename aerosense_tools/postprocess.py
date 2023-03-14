@@ -99,9 +99,9 @@ class BladeIMU:
         # TODO Rotate can be refactored to avoid 3 X number_of_samples of samples input
         self.rotate(
             [
-                angles[0] * np.ones(self.number_of_samples),
-                angles[1] * np.ones(self.number_of_samples),
-                angles[2] * np.ones(self.number_of_samples)
+                self.angles[0] * np.ones(self.number_of_samples),
+                self.angles[1] * np.ones(self.number_of_samples),
+                self.angles[2] * np.ones(self.number_of_samples)
             ]
         )
         # TODO Compute azimuth in standstill
