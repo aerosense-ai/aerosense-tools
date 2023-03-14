@@ -10,9 +10,9 @@ from tests import TEST_DURATION, TEST_START_TIME, TEST_SAMPLING_STEP
 
 
 class TestPostProcess(unittest.TestCase):
-    """Test that pre-process RawSignal and SensorMeasurementSession class methods are performing as expected."""
+
     def sample_timeseries(self, start, length, freq):
-        """Creates a sample pandas dataframe with a datetime index and sinusoidal signals.
+        """Creates a sample pandas dataframe with a datetime index and test azimuth angles.
 
        Args:
            start dt.datetime: The start datetime for the index.
@@ -25,26 +25,32 @@ class TestPostProcess(unittest.TestCase):
         time_vector = pd.date_range(start=start, end=start+length, freq=freq)
         sample_dataframe = pd.DataFrame(index=time_vector)
         sample_dataframe.index.name="datetime"
-        sample_dataframe['Dir_1'] = np.random.normal(0, 1, size=len(sample_dataframe))
-        sample_dataframe['Dir_2'] = np.random.normal(0, 1, size=len(sample_dataframe))
-        sample_dataframe['Dir_3'] = np.random.normal(0, 1, size=len(sample_dataframe))
+        # Make 10 rotations
+        sample_dataframe['test_azimuth'] = np.linspace(0, 10*2*np.pi, len(time_vector)) % (2*np.pi)
         return sample_dataframe
 
-    def base_data(self):
-        """Creates a base pandas dataframe with a base datetime index and two columns of random normal data.
+    def sample_accelerometer(self):
+        base_data = self.sample_timeseries(TEST_START_TIME, 10*TEST_DURATION, TEST_SAMPLING_STEP)
+        base_data["Acc_Dir_1"]=base_data["test_azimuth"].apply(np.sin) * 9.8
+        base_data["Acc_Dir_2"] = base_data["test_azimuth"].apply(np.cos) * (- 9.8) + 10*9.8
+        base_data["Acc_Dir_3"] = 0
+        base_data.drop("test_azimuth", axis=1, inplace=True)
+        accelerometer = SensorMeasurementSession(base_data, "accelerometer")
+        return accelerometer
 
-        Returns:
-            pandas.DataFrame: A pandas dataframe with a datetime index and two columns of random normal data.
-        """
-        base_data = self.sample_timeseries(TEST_START_TIME, 60*TEST_DURATION, TEST_SAMPLING_STEP)
-        return base_data
+    def sample_gyrometer(self):
+        base_data = self.sample_timeseries(TEST_START_TIME, 10*TEST_DURATION, TEST_SAMPLING_STEP)
+        base_data["Gyro_Dir_1"] = 0
+        base_data["Gyro_Dir_2"] = 0
+        base_data["Gyro_Dir_3"] = - 2*np.pi
+        base_data.drop("test_azimuth", axis=1, inplace=True)
+        gyrometer = SensorMeasurementSession(base_data, "gyroscope")
+        return gyrometer
 
     def test_imu_init(self):
         """Test that IMU class can be initialised from a merged session"""
-        accelerometer = SensorMeasurementSession(self.base_data(), "accelerometer")
-        accelerometer.dataframe = accelerometer.dataframe.add_prefix("Acc_")
-        gyrometer = SensorMeasurementSession(self.base_data(), "gyroscope")
-        gyrometer.dataframe = gyrometer.dataframe.add_prefix("Gyro_")
+        accelerometer = self.sample_accelerometer()
+        gyrometer = self.sample_gyrometer()
         imu_data = accelerometer.merge_with_and_interpolate(gyrometer)
 
         imu_time = (imu_data.index.astype(np.int64) / 10 ** 9) - imu_data.index[0].timestamp()
