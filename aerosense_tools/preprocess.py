@@ -3,8 +3,8 @@ import logging
 import numpy as np
 import pandas as pd
 
-from aerosense_tools.plots import plot_with_layout
 from aerosense_tools.exceptions import EmptyDataFrameError
+from aerosense_tools.plots import plot_with_layout
 
 
 logger = logging.getLogger(__name__)
@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 
 class RawData:
     """A class representing raw data received from a specific sensor through the data gateway."""
+
     def __init__(self, dataframe, sensor_type):
         if dataframe.empty:
             raise EmptyDataFrameError("Empty DataFrame is not allowed for the RawData Class")
@@ -154,19 +155,17 @@ class SensorMeasurementSession:
         """
         for secondary_session in secondary_sessions:
             merged_df = pd.concat([self.dataframe, secondary_session.dataframe], axis=1)
-            merged_df = merged_df.interpolate('index', limit_area="inside").reindex(self.dataframe.index)
+            merged_df = merged_df.interpolate("index", limit_area="inside").reindex(self.dataframe.index)
         return merged_df
 
-    def trim(self, trim_from_start=dt.timedelta(), trim_from_end=dt.timedelta()):
+    def trim(self, from_start=dt.timedelta(), from_end=dt.timedelta()):
         """Delete first and last measurements from the session
 
-        :param datetime.timedelta trim_from_start: Amount of time to trim from the start of the session
-        :param datetime.timedelta trim_from_end: Amount of time to trim from the end of the session
+        :param datetime.timedelta from_start: Amount of time to trim from the start of the session
+        :param datetime.timedelta from_end: Amount of time to trim from the end of the session
         :return SensorMeasurementSession: sensor session with trimmed_dataframe
         """
-        time_window = (self.dataframe.index > self.start + trim_from_start) & (
-            self.dataframe.index < self.end - trim_from_end
-        )
+        time_window = (self.dataframe.index > self.start + from_start) & (self.dataframe.index < self.end - from_end)
 
         trimmed_dataframe = self.dataframe[time_window]
         return SensorMeasurementSession(trimmed_dataframe, self.sensor_type)
@@ -184,7 +183,7 @@ class SensorMeasurementSession:
         filtered_dataframe = self.dataframe[
             (self.dataframe <= rolling_median + acceptable_deviation)
             & (self.dataframe >= rolling_median - acceptable_deviation)
-            ]
+        ]
 
         return filtered_dataframe
 
