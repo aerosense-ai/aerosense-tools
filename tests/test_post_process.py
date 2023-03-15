@@ -53,7 +53,7 @@ class TestPostProcess(unittest.TestCase):
         """Test that IMU class can be initialised from a merged session"""
         accelerometer = self.sample_accelerometer()
         gyrometer = self.sample_gyrometer()
-        imu_data = accelerometer.merge_with_and_interpolate(gyrometer)
+        imu_data = accelerometer.merge_with(gyrometer)
 
         imu_time = (imu_data.index.astype(np.int64) / 10 ** 9) - imu_data.index[0].timestamp()
 

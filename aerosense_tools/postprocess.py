@@ -482,7 +482,7 @@ class PostProcess:
         pandas.DataFrame
             The processed IMU data.
         """
-        imu_data=accelerometer_session.merge_with_and_interpolate(gyrometer_session)
+        imu_data=accelerometer_session.merge_with(gyrometer_session)
 
         # NOTE: using float seconds is not very precise
         imu_time = (imu_data.index.astype(np.int64) / 10**9) - imu_data.index[0].timestamp()

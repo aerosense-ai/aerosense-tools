@@ -199,7 +199,7 @@ class SensorMeasurementSession:
         """
 
         plot_max_time = plot_max_time or self.duration - plot_start_offset
-        plot_df = self.trim_session(plot_start_offset, self.duration - plot_start_offset - plot_max_time).dataframe
+        plot_df = self.trim(plot_start_offset, self.duration - plot_start_offset - plot_max_time).dataframe
 
         if sensor_names:
             plot_df = plot_df[sensor_names]

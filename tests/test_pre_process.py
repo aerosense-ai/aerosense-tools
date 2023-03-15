@@ -71,8 +71,8 @@ class TestPreProcess(unittest.TestCase):
         self.assertTrue(pd.isna(resampled_session.dataframe.iloc[0,0]))
         self.assertAlmostEqual(0.8*data.iloc[0,0]+0.2*data.iloc[1,0], resampled_session.dataframe.iloc[2,0],12)
 
-    def test_merge_with_and_interpolate(self):
-        """Check if SensorMeasurementSession.merge_with_and_interpolate() method correctly merges two measurement
+    def test_merge_with(self):
+        """Check if SensorMeasurementSession.merge_with() method correctly merges two measurement
         sessions with different sampling rates and interpolates the resulting DataFrame to a time vector from a
         primary session. Verify that the merged DataFrame does not contain extrapolated values, and that the first
         interpolated value in the new Dataframe is accurate."""
@@ -87,6 +87,6 @@ class TestPreProcess(unittest.TestCase):
         measurement_sessions1, _ = signal1.extract_measurement_sessions()
         measurement_sessions2, _ = signal2.extract_measurement_sessions()
 
-        merged_df = measurement_sessions1[0].merge_with_and_interpolate(measurement_sessions2[0])
+        merged_df = measurement_sessions1[0].merge_with(measurement_sessions2[0])
         self.assertTrue(pd.isna(merged_df.iloc[-1, -1]))
         self.assertAlmostEqual((data2.iloc[0,0]+data2.iloc[1,0])/2, merged_df.iloc[0,2], 12)
