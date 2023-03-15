@@ -64,10 +64,12 @@ class RawData:
         """Extract sessions (continuous measurement periods) from raw data.
 
         :param datetime.timedelta threshold: Maximum gap between two consecutive measurement samples :return  (list,
-        pandas.DataFrame): List with SensorMeasurementSession objects, a dataframe with sessions' start and end times
+        pandas.DataFrame): List with SensorMeasurementSession objects, a dataframe with sessions' information such as
+        start and end times, duration, sensor statistics
         """
 
         measurement_sessions = []
+        session_statistics = []
         sample_time = pd.DataFrame(self.dataframe.index)
 
         session_starts = sample_time["datetime"].diff() > threshold
@@ -91,11 +93,14 @@ class RawData:
         )
 
         for start_row, end_row in zip(start_rows, end_rows):
-            measurement_sessions.append(
-                SensorMeasurementSession(self.dataframe.iloc[start_row:end_row, :], self.sensor_type)
-            )
+            session = SensorMeasurementSession(self.dataframe.iloc[start_row:end_row, :], self.sensor_type)
+            measurement_sessions.append(session)
+            session_statistics.append(session.sensor_statistics.stack())
 
-        return measurement_sessions, session_times
+        session_times["duration"] = session_times["end"] - session_times["start"]
+        session_information = pd.concat([session_times, pd.DataFrame(session_statistics)], axis=1)
+
+        return measurement_sessions, session_information
 
 
 class SensorMeasurementSession:
@@ -141,7 +146,7 @@ class SensorMeasurementSession:
 
         return SensorMeasurementSession(new_dataframe, self.sensor_type)
 
-    def merge_with_and_interpolate(self, *secondary_sessions):
+    def merge_with(self, *secondary_sessions):
         """Merge current session's sensor measurements with measurements from other sensors (secondary sessions)
         The values from the secondary sessions will be interpolated onto the current session's time vector.
 
@@ -152,7 +157,7 @@ class SensorMeasurementSession:
             merged_df = merged_df.interpolate('index', limit_area="inside").reindex(self.dataframe.index)
         return merged_df
 
-    def trim_session(self, trim_from_start=dt.timedelta(), trim_from_end=dt.timedelta()):
+    def trim(self, trim_from_start=dt.timedelta(), trim_from_end=dt.timedelta()):
         """Delete first and last measurements from the session
 
         :param datetime.timedelta trim_from_start: Amount of time to trim from the start of the session

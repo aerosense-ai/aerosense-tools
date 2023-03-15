@@ -53,9 +53,9 @@ class TestPreProcess(unittest.TestCase):
         data = data1.append(data2)
 
         signal=RawData(data, "test_sensor")
-        measurement_sessions, measurement_session_times = signal.extract_measurement_sessions()
+        measurement_sessions, measurement_session_information = signal.extract_measurement_sessions()
 
-        self.assertEqual(measurement_session_times['start'].loc[1], TEST_START_TIME + dt.timedelta(minutes=30))
+        self.assertEqual(measurement_session_information['start'].loc[1], TEST_START_TIME + dt.timedelta(minutes=30))
         self.assertEqual(len(measurement_sessions), 2)
 
     def test_interpolate_to_constant_timestep(self):
