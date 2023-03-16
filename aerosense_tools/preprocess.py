@@ -153,8 +153,9 @@ class SensorMeasurementSession:
 
         :return Pandas.DataFrame: Merged dataframe
         """
+        merged_df = self.dataframe
         for secondary_session in secondary_sessions:
-            merged_df = pd.concat([self.dataframe, secondary_session.dataframe], axis=1)
+            merged_df = pd.concat([merged_df, secondary_session.dataframe], axis=1)
             merged_df = merged_df.interpolate("index", limit_area="inside").reindex(self.dataframe.index)
         return merged_df
 

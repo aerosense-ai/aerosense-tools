@@ -17,11 +17,11 @@ class BladeIMU:
 
     Attributes
     ----------
-    time : [1xN] numpy array of floats
+    time : [Nx1] numpy array of floats
         time of measurements in seconds starting from 0
-    acc_mps2 : [3xN] numpy array of floats
+    acc_mps2 : [Nx3] numpy array of floats
         accelerometer values in m/s^2
-    gyr_rps : [3xN] numpy array of floats
+    gyr_rps : [Nx3] numpy array of floats
         gyroscope values in rad/s
     standstill : bool
         True if the blade is in standstill
