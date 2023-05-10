@@ -1,5 +1,6 @@
 import datetime as dt
 import json
+
 from google.cloud import bigquery
 
 
