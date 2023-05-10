@@ -19,9 +19,9 @@ class BladeIMU:
     ----------
     time : numpy array of floats
         time of measurements in seconds starting from 0
-    acc_mps2 : 3D numpy array of floats
+    acc : 3D numpy array of floats
         accelorometer values in m/s^2
-    gyr_rps : 3D numpy array of floats
+    gyr : 3D numpy array of floats
         gyroscope values in rad/s
     standstill : bool
         True if the blade is in standstill
@@ -62,10 +62,8 @@ class BladeIMU:
         Peak detection helper function. Calls find_peaks from scipy.signal.
     calculate_precone()
         Calculates the precone angle of the blade.
-    calculate_deflection()
-        Estimates the flapwise deflections.
-    calculate_pitch()
-        Calculates the pitch angle of the blade.
+    calculate_blade_angles
+        Calculates the pitch and deflection angle at the same time
     calculate_azimuth()
         Calculates the azimuth angle of the blade.
     get_height()
@@ -84,54 +82,222 @@ class BladeIMU:
         Converts the quaternion to euler angles.
     """
 
-    def __init__(self, time, acc_mps2, gyr_rps, angles=None, standstill=False):
+    def __init__(self, time, acc, gyr, **kwargs):
         self.time = time
-        self.acc_mps2 = acc_mps2
-        self.gyr_rps = gyr_rps
-        self.angles = [0, 0, 0] or angles # issues to initiate the self.rotate
+        self.acc = acc
+        self.gyr = gyr
 
+        self.azimuth = None
+        self.pitch = None
+        self.deflection_angle = None
+
+        self.acc_g = None
+        self.acc_cent = None
+        self.acc_root = None
+        self.gyr_root = None
         self.number_of_samples = len(time)
-        if self.number_of_samples != len(acc_mps2[0]) or self.number_of_samples != len(gyr_rps[0]):
+
+        self.imu_orientation = kwargs.get('imu_orientation', [0, 0, 0])
+        self.precone_angle = kwargs.get('precone_angle', 0)
+        self.standstill = kwargs.get('standstill', None)
+        self.gyr0 = kwargs.get('offset_gyr', [0, 0, 0])
+        self.acc0 = kwargs.get('offset_acc', [0, 0, 0])
+
+        # Check if we have correct inputs
+        if self.number_of_samples != len(self.acc[0]) or self.number_of_samples != len(self.gyr[0]):
             raise ValueError('Data arrays must be of same length')
 
-        self.standstill = standstill or self.test_for_standstill(gyr_rps)
+        self.acc = self.calibrate_acc()
+        self.gyr = self.calibrate_gyro()
 
-        # # TODO Rotate can be refactored to avoid 3 X number_of_samples of samples input
-        # This doesn't work
-        self.rotate(
-            [
-                angles[0] * np.ones(self.number_of_samples),
-                angles[1] * np.ones(self.number_of_samples),
-                angles[2] * np.ones(self.number_of_samples)
-            ]
-        )
-        # TODO Compute azimuth in standstill
+        # Rotate to blade frame if needed
+        self.acc_blade, self.gyr_blade = self.rotate(self.imu_orientation, self.acc, self.gyr)
+
+        if self.imu_orientation is not None:
+            self.test_for_standstill(self.gyr)
+
+    def compute_position(self):
+        """ compute the full sequence:
+        1. calculate_pitch and deflection angle
+        2. rotate accordingly
+        3. decompose rotations
+        4. calculate_azimuth"""
+
         if not self.standstill:
             logger.info('Blade is in motion')
-            acc_peaks, acc_mins, _, _ = self.compute_peaks_mins()
-            self.acc_centrip, self.acc_g = self.decompose_accelerations(acc_mps2, acc_peaks, acc_mins)
-            self.pitch = self.calculate_pitch()
-            self.azimuth = self.calculate_azimuth()
+            self.pitch, self.deflection_angle = self.calculate_blade_angles(self.gyr_blade)
+            self.acc_root, self.gyr_root = self.rotate([self.deflection_angle, self.pitch, 0], self.acc_blade, self.gyr_blade)
+            self.azimuth = self.calculate_azimuth_angle(self.acc_root, self.gyr_root)
+        else:
+            raise ValueError('Blade in standstill, I do not see why I should run it')
+        return self
 
     @staticmethod
-    def test_for_standstill(gyr_rps, threshold=0.01):
+    def test_for_standstill(gyr, threshold=0.01):
         """gyr_rps[2] (z-axis) can be used to check for standstill as it presumably points closest to the direction
         of the rotational axis."""
-        if (abs(gyr_rps[2]) < threshold).any():
+        if (abs(gyr[2]) < threshold).any():
             logger.info('Standstill detected')
             return True
         else:
             return False
 
     @staticmethod
-    def decompose_accelerations(acc_mps2, acc_peaks, acc_mins):
+    def calculate_precone(self):
+        """
+        Finds the precone angle of the blade (active rotation).
+        Steps taken before calling this function:
+        1. Rotate the IMU to the blade frame. (if not already done)
+        2. Blade must be in standstill pointing directly downwards.
+        3. Blade must be at 0 degree pitch.
+
+        Returns
+        -------
+        precone:
+            float - Precone angle of the blade.
+        """
+        if not BladeIMU.test_for_standstill(self.gyr):
+            raise ValueError('Blade must be in standstill')
+
+        precone = (np.arctan2(self.acc_mps2[2],
+                              self.acc_mps2[1]) * 180 / np.pi).mean()  # mean of precone angle in degrees
+        return self.precone
+
+    def calculate_blade_angles(self, gyr):
+        """
+        Calculate the pitch and deflection angle at the same time so that the rotation is only around one axis
+
+        Returns
+        -------
+        pitch in degree
+        deflection_angle in degree
+        """
+        # normalize it
+        gyr = gyr / np.linalg.norm(gyr, axis=0)
+        pitch = (np.arctan2(gyr[0], -gyr[2]) * 180 / np.pi)
+        deflection_angle = (np.arctan2(np.sin(pitch * np.pi / 180.) * gyr[1], -gyr[0]) * 180 / np.pi)
+        return pitch, deflection_angle
+
+
+    def calculate_azimuth_angle(self,acc_root, gyr_root):
+        """
+        Calculate the azimuth angle based on reorient accelerometer and gyro values
+
+        Returns
+        -------
+        azimuth angle in radians
+        """
+        acc_cent, acc_g = self.decompose_accelerations(acc_root, gyr_root)
+        # Be sure there's no NaN
+        acc_g = acc_g.astype('float')
+        inans = np.isnan(acc_g)
+        for k in range(acc_g.shape[0]):
+            acc_g[k, inans[k, :]] = np.interp(self.time[inans[k, :]], self.time[~inans[k, :]], acc_g[k, ~inans[k, :]])
+        azimuth = self.calculate_azimuth(acc_g)
+        return azimuth
+
+    def calculate_azimuth(self, acc_g):
+        """
+        Finds the azimuth angle of the blade.
+        Rotation to 0 degree precone and 0 degree pitch must be done before this function is called.
+        Blade must be in motion.
+
+        Returns
+        -------
+        azimuth:
+            1xN np.ndarray - Contains the azimuth angle of the blade.
+        """
+        if self.standstill:
+            raise ValueError('Blade must be in motion')
+
+        # normalize it first
+        acc_g = acc_g / np.linalg.norm(acc_g, axis=0)
+
+        ag_x = -acc_g[0]
+        ag_y = acc_g[1]
+
+        azimuth = np.array(
+            [np.arctan2(ag_x[i], ag_y[i]) for i in range(self.number_of_samples)])  # azimuth angle in degrees
+        # change range from [180,-180] to [0,-360]
+        # azimuth = -azimuth - 180
+        return azimuth
+
+    def rotate(self, angles, acc, gyr):
+        """
+        Rotates the IMU's coordinates with given euler angles.
+        Rotation according to scipy.spatial.transform.Rotation library.
+
+        Inputs
+        ------
+        Angles: 3xN np.ndarray
+            Angles (x_rotation,y_rotation,z_rotation) in degrees, by which the coordinates shall be rotated.
+        """
+
+        accT = np.transpose(acc)
+        gyrT = np.transpose(gyr)
+        for i, ang in enumerate(angles):
+            if isinstance(ang, (float, int)):
+                angles[i] = ang*np.ones(self.number_of_samples)
+        angles = np.transpose(angles)
+        rot_gyrT = np.zeros(gyrT.shape)
+        rot_accT = np.zeros(accT.shape)
+
+        for i in range(self.number_of_samples):
+            rot = R.from_euler('xyz', angles[i], degrees=True)  # intrinsic
+            rot_gyrT[i] = rot.apply(gyrT[i])
+            rot_accT[i] = rot.apply(accT[i])
+
+        acc_rot = np.transpose(rot_accT)
+        gyr_rot = np.transpose(rot_gyrT)
+
+        return acc_rot, gyr_rot
+
+    def decompose_accelerations(self, acc, gyr):
         '''
         Decomposes accelerometer signal into centripetal force and gravity vector.
         '''
-        acc_centrip = ((acc_peaks + acc_mins) / 2.)
-        acc_g = acc_mps2 - acc_centrip
+        acc_peaks, acc_mins, _, _ = self.compute_peaks_mins(acc, gyr)
+        self.acc_cent = ((acc_peaks + acc_mins) / 2.)
+        self.acc_g = acc - self.acc_cent
 
-        return acc_centrip, acc_g
+        return self.acc_cent, self.acc_g
+
+    def compute_peaks_mins(self, acc, gyr):
+        '''
+        Peak detection helper function. Calls get_acc_peaks_mins for each axis.
+        TODO Test how generalisable this code is.
+        '''
+        acc_peak_locations = []
+        acc_min_locations = []
+        acc_peaks = []
+        acc_mins = []
+        w_norm = np.mean((gyr[0] ** 2 + gyr[1] ** 2 + gyr[2] ** 2) ** 0.5)
+        distance = 50 * np.pi / w_norm
+
+        axs = ['x', 'y', 'z']
+        for i in range(3):
+            # WARNING: This looks like some ad-hoc peak detection solution. Might not generalise!!!
+            if i == 2:
+                detect = self.get_acc_peaks_mins(acc[i], self.time, self.number_of_samples, width=40)
+            else:
+                detect = self.get_acc_peaks_mins(acc[i], self.time, self.number_of_samples, distance=distance, width=30,
+                                                 prominence=10)
+
+            acc_peak_loc_i, acc_peaks_i, acc_min_loc_i, acc_mins_i = detect
+            if len(acc_peak_loc_i) == 0:
+                logger.warning("No peaks found for {}-axis".format(axs[i]))
+
+            acc_peak_locations.append(acc_peak_loc_i)
+            acc_min_locations.append(acc_min_loc_i)
+            acc_peaks.append(acc_peaks_i)
+            acc_mins.append(acc_mins_i)
+
+        acc_peak_locations = np.asarray(acc_peak_locations, dtype='object')
+        acc_min_locations = np.asarray(acc_min_locations, dtype='object')
+        acc_peaks = np.asarray(acc_peaks, dtype='object')
+        acc_mins = np.asarray(acc_mins, dtype='object')
+
+        return acc_peaks, acc_mins, acc_peak_locations, acc_min_locations
 
     @staticmethod
     def get_acc_peaks_mins(signal, time, number_of_samples, height=None, threshold=None, distance=None,
@@ -178,121 +344,8 @@ class BladeIMU:
 
         return peak_locations, peaks_interp, min_locations, mins_interp
 
-    def compute_peaks_mins(self):
-        '''
-        Peak detection helper function. Calls get_acc_peaks_mins for each axis.
-        TODO Test how generalisable this code is.
-        '''
-        acc_peak_locations = []
-        acc_min_locations = []
-        acc_peaks = []
-        acc_mins = []
-        w_norm = np.mean((self.gyr_rps[0] ** 2 + self.gyr_rps[1] ** 2 + self.gyr_rps[2] ** 2) ** 0.5)
-        distance = 50 * np.pi / w_norm
 
-        axs = ['x', 'y', 'z']
-        for i in range(3):
-            # WARNING: This looks like some ad-hoc peak detection solution. Might not generalise!!!
-            if i == 2:
-                detect = self.get_acc_peaks_mins(self.acc_mps2[i], self.time, self.number_of_samples, width=40)
-            else:
-                detect = self.get_acc_peaks_mins(self.acc_mps2[i], self.time, self.number_of_samples, distance=distance, width=30,
-                                                 prominence=10)
 
-            acc_peak_loc_i, acc_peaks_i, acc_min_loc_i, acc_mins_i = detect
-            if len(acc_peak_loc_i) == 0:
-                logger.warning("No peaks found for {}-axis".format(axs[i]))
-
-            acc_peak_locations.append(acc_peak_loc_i)
-            acc_min_locations.append(acc_min_loc_i)
-            acc_peaks.append(acc_peaks_i)
-            acc_mins.append(acc_mins_i)
-
-        acc_peak_locations = np.asarray(acc_peak_locations, dtype='object')
-        acc_min_locations = np.asarray(acc_min_locations, dtype='object')
-        acc_peaks = np.asarray(acc_peaks, dtype='object')
-        acc_mins = np.asarray(acc_mins, dtype='object')
-
-        return acc_peaks, acc_mins, acc_peak_locations, acc_min_locations
-
-    @staticmethod
-    def calculate_precone(self):
-        """
-        Finds the precone angle of the blade (active rotation).
-        Steps taken before calling this function:
-        1. Rotate the IMU to the blade frame. (if not already done)
-        2. Blade must be in standstill pointing directly downwards.
-        3. Blade must be at 0 degree pitch.
-
-        Returns
-        -------
-        precone:
-            float - Precone angle of the blade.
-        """
-        if not BladeIMU.test_for_standstill(self.gyr_rps):
-            raise ValueError('Blade must be in standstill')
-
-        precone = (np.arctan2(self.acc_mps2[2],
-                              self.acc_mps2[1]) * 180 / np.pi).mean()  # mean of precone angle in degrees
-        return self.precone
-
-    @staticmethod
-    def calculate_deflection(acc_mps2, gyr_rps):
-        """
-        Estimates the flapwise deflections.
-        Only delivers accurate results during fast rotational speeds.
-
-        Returns
-        -------
-        deflections:
-            float - Estimation of flapwise deflection
-        """
-        if BladeIMU.test_for_standstill(gyr_rps):
-            raise ValueError('Blade must be in motion')
-
-        deflection = 180 - (np.arctan2(acc_mps2[2].mean(),
-                                       acc_mps2[1].mean()) * 180 / np.pi)  # mean of deflection angle in degrees
-        return deflection
-
-    def calculate_pitch(self):
-        """
-        Finds the pitch angle of the blade.
-        Rotation to 0 degree precone must be done before this function is called.
-        Blade must be in motion.
-
-        Returns
-        -------
-        pitch:
-            1xN np.ndarray - Contains the pitch angle of the blade.
-        """
-        if self.standstill:
-            raise ValueError('Blade must be in motion')
-
-        pitch = (np.arctan2(self.gyr_rps[0], -self.gyr_rps[2]) * 180 / np.pi)  # pitch angle in degrees
-        return pitch
-
-    def calculate_azimuth(self):
-        """
-        Finds the azimuth angle of the blade.
-        Rotation to 0 degree precone and 0 degree pitch must be done before this function is called.
-        Blade must be in motion.
-
-        Returns
-        -------
-        azimuth:
-            1xN np.ndarray - Contains the azimuth angle of the blade.
-        """
-        if self.standstill:
-            raise ValueError('Blade must be in motion')
-
-        ag_x = -self.acc_g[0]
-        ag_y = self.acc_g[1]
-
-        azimuth = np.array(
-            [np.arctan2(ag_x[i], ag_y[i]) * 180 / np.pi for i in range(self.number_of_samples)])  # azimuth angle in degrees
-        # change range from [180,-180] to [0,-360]
-        azimuth = -azimuth - 180
-        return azimuth
 
     @staticmethod
     def get_height(azimuth, hub_height, radius):
@@ -309,39 +362,24 @@ class BladeIMU:
         height: Nx1 np.ndarray
             Height of sensor relative to the ground.
         """
-        return hub_height - radius * np.sin(azimuth * np.pi / 180 - np.pi / 2)
+        return hub_height - radius * np.sin(azimuth - np.pi / 2)
 
-    def calibrate_gyro(self, bias=np.array([[0], [0], [0]])):
-        self.gyr_rps += bias
+    def calibrate_gyro(self):
+        self.gyr = self.gyr - (self.gyr0 * np.ones(self.gyr.shape).T).T
+        return self.gyr
 
-    def calibrate_acc(self, bias=np.array([[0], [0], [0]])):
-        self.acc_mps2 += bias
+    def calibrate_acc(self):
+        self.acc = self.acc - (self.acc0 * np.ones(self.acc.shape).T).T
+        return self.acc
+
+    def compute_hydrostatic_pressure(height, hub_height):
+        # TODO: - adapt rho as function of temperature
+        rho = 1.22
+        g = 9.81
+        DeltaP = rho * g * (height - hub_height)
+        return DeltaP
 
     # TODO Depending on the size of angles: if 3x1: Make a static rotation, else should be the correct length
-    def rotate(self, angles):
-        '''
-        Rotates the IMU's coordinates with given euler angles.
-        Rotation according to scipy.spatial.transform.Rotation library.
-
-        Inputs
-        ------
-        Angles: 3xN np.ndarray
-            Angles (x_rotation,y_rotation,z_rotation) in degrees, by which the coordinates shall be rotated.
-        '''
-        accT = np.transpose(self.acc_mps2)
-        gyrT = np.transpose(self.gyr_rps)
-        angles = np.transpose(angles)
-        rot_gyrT = np.zeros(gyrT.shape)
-        rot_accT = np.zeros(accT.shape)
-
-        for i in range(self.number_of_samples):
-            rot = R.from_euler('xyz', angles[i], degrees=True)  # intrinsic
-            rot_gyrT[i] = rot.apply(gyrT[i])
-            rot_accT[i] = rot.apply(accT[i])
-
-        self.acc_mps2 = np.transpose(rot_accT)
-        self.gyr_rps = np.transpose(rot_gyrT)
-
     def blade_velocity(self, acc_peak_locations, acc_min_locations):
         '''
         Makes use of the peaks and minima caused by oscillations due to the gravity vector to calculate the IMU's
@@ -396,13 +434,13 @@ class BladeIMU:
                 Nx4 np.ndarray - Quaternion representation of the orientation.
 
         '''
-        w_norm = norm(self.gyr_rps, axis=0)
+        w_norm = norm(self.gyr, axis=0)
         if no_ac:
             w_threshold = 0.2
         else:
             w_threshold = 100
         acc_T = np.transpose(self.acc_mps2).astype('float')
-        gyr_T = np.transpose(self.gyr_rps)
+        gyr_T = np.transpose(self.gyr)
         acc_g_T = np.transpose(self.acc_g).astype('float')
 
         if ahrs == 'Madgwick':
@@ -469,8 +507,8 @@ class PostProcess:
 
         imu = BladeIMU(
             time=imu_data.index,
-            acc_mps2=imu_data[acc_signal.dataframe.columns],
-            gyr_rps=imu_data[gyro_signal.dataframe.columns],
+            acc=imu_data[acc_signal.dataframe.columns],
+            gyr=imu_data[gyro_signal.dataframe.columns],
             angles=imu_coordinates["angles"]
         )
 
