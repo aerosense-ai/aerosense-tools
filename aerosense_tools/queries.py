@@ -163,10 +163,10 @@ class BigQuery:
         """Get metadata for microphone data for the given node of the given installation over the given time period. The
         time period defaults to the last day.
 
-        :param str installation_reference: the reference of the installation to get sensor data from
-        :param str node_id: the node on the installation to get sensor data from
-        :param datetime.datetime|None start: defaults to 1 day before the given finish
-        :param datetime.datetime|None finish: defaults to the current datetime
+        :param str installation_reference: the reference of the installation to get microphone metadata from
+        :param str node_id: the node on the installation to get microphone metadata from
+        :param datetime.datetime|None start: the start of the time period; defaults to 1 day before the given finish
+        :param datetime.datetime|None finish: the end of the time period; defaults to the current datetime
         :return pandas.Dataframe: the microphone metadata
         """
         query = f"""
@@ -195,9 +195,9 @@ class BigQuery:
         the given tolerance). If more than one datetime is found within the tolerance, the datafile with the earliest
         timestamp is downloaded.
 
-        :param str installation_reference: the reference of the installation to get sensor data from
-        :param str node_id: the node on the installation to get sensor data from
-        :param datetime.datetime datetime: defaults to 1 day before the given finish
+        :param str installation_reference: the reference of the installation to get microphone data from
+        :param str node_id: the node on the installation to get microphone data from
+        :param datetime.datetime datetime: the datetime to get the data for
         :param float tolerance: the tolerance on the given datetime in seconds
         :return str: the local path the microphone datafile was downloaded to
         """
