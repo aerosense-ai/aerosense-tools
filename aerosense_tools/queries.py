@@ -3,6 +3,7 @@ import json
 from google.cloud import bigquery
 
 
+DATASET_NAME = "aerosense-twined.greta"
 ROW_LIMIT = 10000
 
 
@@ -36,7 +37,7 @@ class BigQuery:
         :param int|None row_limit: if set to `None`, no row limit is applied; if set to an integer, the row limit is set to this; defaults to 10000
         :return (pandas.Dataframe, bool): the sensor data and whether the data has been limited by a row limit
         """
-        table_name = f"aerosense-twined.greta.sensor_data_{sensor_type_reference}"
+        table_name = f"{DATASET_NAME}.sensor_data_{sensor_type_reference}"
 
         conditions = """
         WHERE datetime BETWEEN @start AND @finish
@@ -97,7 +98,7 @@ class BigQuery:
         :param float tolerance: the tolerance on the given datetime in seconds
         :return pandas.Dataframe: the sensor data at the given datetime
         """
-        table_name = f"aerosense-twined.greta.sensor_data_{sensor_type_reference}"
+        table_name = f"{DATASET_NAME}.sensor_data_{sensor_type_reference}"
 
         start_datetime = datetime - dt.timedelta(seconds=tolerance / 2)
         finish_datetime = datetime + dt.timedelta(seconds=tolerance / 2)
@@ -133,9 +134,9 @@ class BigQuery:
         :param datetime.datetime|None finish: defaults to the current datetime
         :return pandas.Dataframe: the aggregated connection statistics
         """
-        query = """
+        query = f"""
         SELECT datetime, filtered_rssi, raw_rssi, tx_power, allocated_heap_memory
-        FROM `aerosense-twined.greta.connection_statistics_agg`
+        FROM `{DATASET_NAME}.connection_statistics_agg`
         WHERE datetime BETWEEN @start AND @finish
         AND installation_reference = @installation_reference
         AND node_id = @node_id
@@ -160,9 +161,9 @@ class BigQuery:
 
         :return list(dict): the available installations
         """
-        query = """
+        query = f"""
         SELECT reference, turbine_id, location
-        FROM `aerosense-twined.greta.installation`
+        FROM `{DATASET_NAME}.installation`
         ORDER BY reference
         """
 
@@ -178,9 +179,9 @@ class BigQuery:
 
         :return list(dict): the available sensor types and their metadata
         """
-        query = """
+        query = f"""
         SELECT name, metadata
-        FROM `aerosense-twined.greta.sensor_type`
+        FROM `{DATASET_NAME}.sensor_type`
         ORDER BY name
         """
 
@@ -195,8 +196,8 @@ class BigQuery:
         :param str installation_reference: the reference of the installation to get the node IDs of
         :return list(str): the node IDs for the installation
         """
-        query = """
-        SELECT node_id FROM `aerosense-twined.greta.sensor_data`
+        query = f"""
+        SELECT node_id FROM `{DATASET_NAME}.sensor_data`
         WHERE installation_reference = @installation_reference
         GROUP BY node_id
         ORDER BY node_id
