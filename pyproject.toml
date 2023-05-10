@@ -26,6 +26,7 @@ packages = [{ include = "aerosense_tools" }]
 python = ">=3.8,<3.11"
 google-cloud-bigquery = {extras = ["bqstorage", "pandas"], version = "^3.0.1"}
 plotly = "^5.10.0"
+octue = "^0.46.1"
 
 
 [tool.poetry.group.dev.dependencies]
