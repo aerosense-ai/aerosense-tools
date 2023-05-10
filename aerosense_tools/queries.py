@@ -1,6 +1,6 @@
 import datetime as dt
 import json
-import os.path
+import os
 
 from google.cloud import bigquery
 from octue.cloud.storage import GoogleCloudStorageClient
