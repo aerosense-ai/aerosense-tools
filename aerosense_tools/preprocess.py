@@ -1,10 +1,11 @@
 import datetime as dt
 import logging
+
 import numpy as np
 import pandas as pd
 
-from aerosense_tools.plots import plot_with_layout
 from aerosense_tools.exceptions import EmptyDataFrameError
+from aerosense_tools.plots import plot_with_layout
 
 
 logger = logging.getLogger(__name__)
@@ -12,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 class RawSignal:
     """A class representing raw data received from data gateway."""
+
     def __init__(self, dataframe, sensor_type):
         if dataframe.empty:
             raise EmptyDataFrameError("Empty DataFrame is not allowed for the RawSignal Class")
@@ -164,7 +166,7 @@ class SensorMeasurementSession:
         """
         for secondary_session in secondary_sessions:
             merged_df = pd.concat([self.dataframe, secondary_session.dataframe], axis=1)
-            merged_df = merged_df.interpolate('index', limit_area="inside").reindex(self.dataframe.index)
+            merged_df = merged_df.interpolate("index", limit_area="inside").reindex(self.dataframe.index)
         return merged_df
 
     def trim_session(self, trim_from_start=dt.timedelta(), trim_from_end=dt.timedelta()):
@@ -205,5 +207,3 @@ class SensorMeasurementSession:
         }
         figure = plot_with_layout(plot_df, layout_dict=layout)
         return figure
-
-
