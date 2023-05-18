@@ -1,7 +1,7 @@
 
 // Make a table to contain coordinate values
 //   - with the following columns:
-"id" // integer foreign key
+"id" // integer foreign key (refers to sensor type on a specific node)
 "reference": {
     "title": "Reference",
     "description": "A reference for this geometry, could be unique but need not be (id must be unique)",
@@ -17,6 +17,7 @@
 }
 "geometry": {
     // a JSON data type column that allows us to splat in either sections data or coordinates data
+    One `sensor array` goes here (conforms to sections schema)
 }
 
 // <Marcus> Make an aerosense-tools function to add a row to the database from a chunk of JSON contain the coordinates (validate against schema)
@@ -27,3 +28,12 @@
 
 // <both> Update reference in installations to point to sensor geometry table
 
+Extract from `nodes_configuration` as it should be in the `configuration` table.
+```
+    "sensor_coordinates": {
+      "Mics": "Kuthulu",   # This maps to a single ID in the table whose schema is above.
+      "Baros_P": "Kraken",
+      ...
+    },
+
+```

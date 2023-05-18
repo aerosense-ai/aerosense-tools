@@ -5,7 +5,7 @@
     "properties": {
         "xy_coordinates":{
             "title": "XY coordinates",
-            "description": "Two arrays of XY coordinates of node locations, normalised to [0,1]. If used for panel-code solver inputs these should be in a counterclockwise order from trailing edge. If used for sensor nodes, should be ordered by sensor number.",
+            "description": "Two arrays of XY coordinates of node locations, with aerofoil characteristic length normalised. If used for panel-code solver inputs these should be in a counterclockwise order from trailing edge. If used for sensor nodes, should be ordered by sensor number.",
             "type": "object",
             "properties": {
                 "x_coordinates": {
@@ -27,15 +27,19 @@
         "radial_coordinates": {
             "description": "Defines the radial positions of the nodes in xy_coordinates",
             "oneOf": [
-                { 
+                {
                     "description": "A single value of r/r_tip determining the radial position of all x,y coordinates (e.g. on a cylinder)",
-                    "type": "number" 
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
                 },
-                { 
+                {
                     "description": "An array of r/r_tip values the same size as `x_coordinates` and `y_coordinates` determining the radial position of each x,y coordinate (allowing non-cylindrical positioning)",
                     "type": "array",
                     "items": {
-                      "type": "number"
+                      "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
                     }
                 }
             ]
@@ -47,11 +51,11 @@
         },
         "ordering": {
             "title": "Ordering of coordinate values",
-            "description": "'acw' represents anticlockwise from the trailing edge (for panel solvers). 'unknown' may represent some other ordering eg by sensor node index.",
+            "description": "Either anticlockwise from the trailing edge (for panel solvers) or 'unknown' (represents some other ordering e.g. by sensor node index).",
             "type": "array",
             "items": {
                 "type": "string",
-                "enum": ["acw", "unknown"]
+                "enum": ["anticlockwise", "unknown"]
             }
         },
         "notes": {

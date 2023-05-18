@@ -1,8 +1,80 @@
 {
-    "title": "IMU location data",
-    "description": "Represents IMU location",
-    "type": "object",
-    "properties": {
-
+  "title": "Sensor",
+  "type": "object",
+  "properties": {
+    "sensor_description": {
+      "title": "Description",
+      "description": "A description of the sensor type",
+      "type": "string"
+    },
+    "channels": {
+      "title": "Sensor Channels",
+      "description": "An array of sensor channel names",
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string"
+      }
+    },
+    "sensor_placement": {
+      "title": "Sensor Location",
+      "type": "object",
+      "properties": {
+        "reference_frame": {
+          "title": "Reference Frame",
+          "description": "The name of the reference frame according to the OpenFAST software",
+          "type": "string"
+        },
+        "yaw-pitch-roll": {
+          "title": "Yaw-Pitch-Roll",
+          "description": "An array of three rotation angles [deg] of the sensor with respect to the reference frame",
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "origin": {
+          "title": "Origin",
+          "description": "The origin of the sensor in the reference frame",
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "wind_turbine_component": {
+          "title": "Wind Turbine Component",
+          "description": "The component of the wind turbine to which the sensor is attached",
+          "type": "string",
+          "enum": ["blade", "hub", "nacelle", "tower", "turbine"]
+        }
+      }
+    },
+    "measured_quantity": {
+      "title": "Measured Quantity",
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Quantity Name",
+          "description": "The name of the measured quantity",
+          "type": "string"
+        },
+        "reference": {
+          "title": "Quantity Reference Link",
+          "description": "A URI link to the quantity definition in a common ontology",
+          "type": "string",
+          "format": "uri"
+        },
+        "unit": {
+          "title": "Quantity Unit",
+          "description": "The SI units of the measured quantity",
+          "type": "string"
+        }
+      }
     }
+  },
+  "required": ["channels", "sensor_location", "measured_quantity"]
 }
