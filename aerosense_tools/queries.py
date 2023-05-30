@@ -2,12 +2,14 @@ import datetime as dt
 import json
 import os
 
+import jsonschema
 from google.cloud import bigquery
 from octue.cloud.storage import GoogleCloudStorageClient
 
 
 DATASET_NAME = "aerosense-twined.greta"
 ROW_LIMIT = 10000
+SENSOR_COORDINATES_SCHEMA_URI = "https://jsonschema.registry.octue.com/aerosense/sensor-coordinates/0.1.3.json"
 
 
 class BigQuery:
@@ -270,6 +272,28 @@ class BigQuery:
         )
 
         return self.client.query(query, job_config=query_config).to_dataframe()["node_id"].to_list()
+
+    def add_sensor_coordinates(self, coordinates):
+        """Add the given sensor coordinates to the sensor coordinates table.
+
+        :param dict coordinates: the sensor coordinates
+        :return None:
+        """
+        jsonschema.validate(coordinates, {"$ref": SENSOR_COORDINATES_SCHEMA_URI})
+
+        errors = self.client.insert_rows(
+            table=self.client.get_table(DATASET_NAME + ".sensor_coordinates"),
+            rows=[
+                {
+                    "reference": coordinates["reference"],
+                    "kind": coordinates["kind"],
+                    "geometry": json.dumps(coordinates["geometry"]),
+                }
+            ],
+        )
+
+        if errors:
+            raise ValueError(errors)
 
     def query(self, query_string):
         """Query the dataset with an arbitrary query.
