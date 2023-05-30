@@ -271,6 +271,14 @@ class BigQuery:
 
         return self.client.query(query, job_config=query_config).to_dataframe()["node_id"].to_list()
 
+    def query(self, query_string):
+        """Query the dataset with an arbitrary query.
+
+        :param str query_string: the query to use
+        :return pd.DataFrame: the results of the query
+        """
+        return self.client.query(query_string).to_dataframe()
+
     def _get_time_period(self, start=None, finish=None):
         """Get a time period of:
         - The past day if no arguments are given
@@ -285,11 +293,3 @@ class BigQuery:
         finish = finish or dt.datetime.now()
         start = start or finish - dt.timedelta(days=1)
         return start, finish
-
-    def query(self, query_string):
-        """Query the dataset with an arbitrary query.
-
-        :param str query_string: the query to use
-        :return pd.DataFrame: the results of the query
-        """
-        return self.client.query(query_string).to_dataframe()
