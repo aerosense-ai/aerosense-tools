@@ -9,7 +9,7 @@ from octue.cloud.storage import GoogleCloudStorageClient
 
 DATASET_NAME = "aerosense-twined.greta"
 ROW_LIMIT = 10000
-SENSOR_COORDINATES_SCHEMA_URI = "https://jsonschema.registry.octue.com/aerosense/sensor-coordinates/0.1.3.json"
+SENSOR_COORDINATES_SCHEMA_URI = "https://jsonschema.registry.octue.com/aerosense/sensor-coordinates/0.1.4.json"
 
 
 class BigQuery:
