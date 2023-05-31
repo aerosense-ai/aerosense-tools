@@ -322,6 +322,27 @@ class BigQuery:
             job_config=query_config,
         )
 
+    def get_sensor_coordinates(self, reference):
+        """Get the sensor coordinates with the given reference from the sensor coordinates table.
+
+        :param str reference: the reference of the coordinates to get
+        :return None:
+        """
+        query_config = bigquery.QueryJobConfig(
+            query_parameters=[bigquery.ScalarQueryParameter("reference", "STRING", reference)]
+        )
+
+        result = self.client.query(
+            f"""SELECT * FROM {DATASET_NAME}.sensor_coordinates
+            WHERE reference = @reference;
+            """,
+            job_config=query_config,
+        )
+
+        result = dict(result.result().to_dataframe().iloc[0])
+        result["geometry"] = json.loads(result["geometry"])
+        return result
+
     def query(self, query_string):
         """Query the dataset with an arbitrary query.
 
