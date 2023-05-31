@@ -281,6 +281,9 @@ class BigQuery:
         """
         jsonschema.validate(coordinates, {"$ref": SENSOR_COORDINATES_SCHEMA_URI})
 
+        if self.get_sensor_coordinates(coordinates["reference"]):
+            raise ValueError(f"Sensor coordinates with the reference {coordinates['reference']!r} already exist.")
+
         errors = self.client.insert_rows(
             table=self.client.get_table(DATASET_NAME + ".sensor_coordinates"),
             rows=[
@@ -294,6 +297,57 @@ class BigQuery:
 
         if errors:
             raise ValueError(errors)
+
+    def update_sensor_coordinates(self, reference, kind, geometry):
+        """Update the given sensor coordinates in the sensor coordinates table.
+
+        :param str reference: the reference of the coordinates to update
+        :param str kind: the kind of the new coordinates
+        :param dict geometry: the new coordinates
+        :return None:
+        """
+        coordinates = {"reference": reference, "kind": kind, "geometry": geometry}
+        jsonschema.validate(coordinates, {"$ref": SENSOR_COORDINATES_SCHEMA_URI})
+
+        query_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("kind", "STRING", kind),
+                bigquery.ScalarQueryParameter("geometry", "JSON", json.dumps(geometry)),
+                bigquery.ScalarQueryParameter("reference", "STRING", reference),
+            ]
+        )
+
+        self.client.query(
+            f"""UPDATE {DATASET_NAME}.sensor_coordinates
+            SET kind = @kind, geometry = @geometry
+            WHERE reference = @reference;
+            """,
+            job_config=query_config,
+        )
+
+    def get_sensor_coordinates(self, reference):
+        """Get the sensor coordinates with the given reference from the sensor coordinates table if they exist.
+
+        :param str reference: the reference of the coordinates to get
+        :return dict|None: the sensor coordinates if they exist
+        """
+        query_config = bigquery.QueryJobConfig(
+            query_parameters=[bigquery.ScalarQueryParameter("reference", "STRING", reference)]
+        )
+
+        result = self.client.query(
+            f"""SELECT * FROM {DATASET_NAME}.sensor_coordinates
+            WHERE reference = @reference;
+            """,
+            job_config=query_config,
+        ).result()
+
+        if result.total_rows == 0:
+            return None
+
+        result = dict(result.to_dataframe().iloc[0])
+        result["geometry"] = json.loads(result["geometry"])
+        return result
 
     def query(self, query_string):
         """Query the dataset with an arbitrary query.
