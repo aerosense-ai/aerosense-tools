@@ -40,7 +40,7 @@ class RawSignal:
         :return pandas.Dataframe: inplace filtered dataframe
         """
         rolling_median = self.dataframe.rolling(window).median()
-        rolling_std = self.dataframe.rolataframeling(window).std()
+        rolling_std = self.dataframe.rolling(window).std()
 
         # TODO define filtering rule using rolling df here
         self.dataframe = self.dataframe[
