@@ -299,7 +299,7 @@ class BigQuery:
             raise ValueError(errors)
 
     def update_sensor_coordinates(self, reference, kind, geometry):
-        """Update the given sensor coordinates to the sensor coordinates table.
+        """Update the given sensor coordinates in the sensor coordinates table.
 
         :param str reference: the reference of the coordinates to update
         :param str kind: the kind of the new coordinates
