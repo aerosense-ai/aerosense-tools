@@ -281,6 +281,9 @@ class BigQuery:
         """
         jsonschema.validate(coordinates, {"$ref": SENSOR_COORDINATES_SCHEMA_URI})
 
+        if self.get_sensor_coordinates(coordinates["reference"]):
+            raise ValueError(f"Sensor coordinates with the reference {coordinates['reference']!r} already exist.")
+
         errors = self.client.insert_rows(
             table=self.client.get_table(DATASET_NAME + ".sensor_coordinates"),
             rows=[
@@ -323,10 +326,10 @@ class BigQuery:
         )
 
     def get_sensor_coordinates(self, reference):
-        """Get the sensor coordinates with the given reference from the sensor coordinates table.
+        """Get the sensor coordinates with the given reference from the sensor coordinates table if they exist.
 
         :param str reference: the reference of the coordinates to get
-        :return None:
+        :return dict|None: the sensor coordinates if they exist
         """
         query_config = bigquery.QueryJobConfig(
             query_parameters=[bigquery.ScalarQueryParameter("reference", "STRING", reference)]
@@ -337,9 +340,12 @@ class BigQuery:
             WHERE reference = @reference;
             """,
             job_config=query_config,
-        )
+        ).result()
 
-        result = dict(result.result().to_dataframe().iloc[0])
+        if result.total_rows == 0:
+            return None
+
+        result = dict(result.to_dataframe().iloc[0])
         result["geometry"] = json.loads(result["geometry"])
         return result
 
