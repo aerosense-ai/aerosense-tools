@@ -295,6 +295,33 @@ class BigQuery:
         if errors:
             raise ValueError(errors)
 
+    def update_sensor_coordinates(self, reference, kind, geometry):
+        """Update the given sensor coordinates to the sensor coordinates table.
+
+        :param str reference: the reference of the coordinates to update
+        :param str kind: the kind of the new coordinates
+        :param dict geometry: the new coordinates
+        :return None:
+        """
+        coordinates = {"reference": reference, "kind": kind, "geometry": geometry}
+        jsonschema.validate(coordinates, {"$ref": SENSOR_COORDINATES_SCHEMA_URI})
+
+        query_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("kind", "STRING", kind),
+                bigquery.ScalarQueryParameter("geometry", "JSON", json.dumps(geometry)),
+                bigquery.ScalarQueryParameter("reference", "STRING", reference),
+            ]
+        )
+
+        self.client.query(
+            f"""UPDATE {DATASET_NAME}.sensor_coordinates
+            SET kind = @kind, geometry = @geometry
+            WHERE reference = @reference;
+            """,
+            job_config=query_config,
+        )
+
     def query(self, query_string):
         """Query the dataset with an arbitrary query.
 
