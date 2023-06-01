@@ -81,7 +81,7 @@ class RawSignal:
         """Extract sessions (continuous measurement periods) from raw data.
 
         :param datetime.timedelta threshold: Maximum gap between two consecutive measurement samples
-        :return  (list, pandas.DataFrame): List with SensorMeasurementSession objects, a dataframe with sessions' start and end times
+        :return (list, pandas.DataFrame): List with SensorMeasurementSession objects, a dataframe with sessions' start and end times
         """
         measurement_sessions = []
         sample_time = pd.DataFrame(self.dataframe.index)
@@ -91,17 +91,18 @@ class RawSignal:
         session_starts.iloc[0] = session_ends.iloc[-1] = True
 
         # Edge case of a single measurement point:
-        single_sample = sample_time.index[session_starts] == sample_time.index[session_ends]
+        is_single_sample = sample_time.index[session_starts] == sample_time.index[session_ends]
 
-        if any(single_sample):
+        if any(is_single_sample):
             logger.warning(
                 "Sensor type {} has single measurement points at {}".format(
-                    self.sensor_type, sample_time[session_starts][single_sample]
+                    self.sensor_type,
+                    sample_time[session_starts][is_single_sample],
                 )
             )
 
-        start_rows = sample_time.index[session_starts][~single_sample]
-        end_rows = sample_time.index[session_ends][~single_sample]
+        start_rows = sample_time.index[session_starts][~is_single_sample]
+        end_rows = sample_time.index[session_ends][~is_single_sample]
 
         session_times = pd.DataFrame(
             {
