@@ -1,5 +1,7 @@
+import pandas as pd
 from plotly import express as px
 
+from aerosense_tools.queries import BigQuery
 from aerosense_tools.utils import get_cleaned_sensor_column_names
 
 
@@ -92,4 +94,29 @@ def plot_pressure_bar_chart(df, y_minimum, y_maximum):
     figure = px.line(df_transposed, x="Barometer number", y="Raw value")
     figure.add_bar(x=df_transposed["Barometer number"], y=df_transposed["Raw value"])
     figure.update_layout(showlegend=False, yaxis_range=[y_minimum, y_maximum])
+    return figure
+
+
+def plot_sensor_coordinates(reference, labels=None):
+    """Plot the sensor coordinates for the given sensor coordinates reference.
+
+    :param str reference: the reference of the sensor coordinates to plot
+    :param list(str)|None labels: labels to give to each sensor in the plot (should be as long as the number of sensors)
+    :return plotly.graph_objs.Figure: a plot of sensor coordinates
+    """
+    sensor_coordinates = BigQuery().get_sensor_coordinates(reference=reference)
+
+    sensor_coordinates_df_dict = {
+        "x": sensor_coordinates["geometry"]["xy_coordinates"]["x_coordinates"],
+        "y": sensor_coordinates["geometry"]["xy_coordinates"]["y_coordinates"],
+    }
+
+    if labels:
+        sensor_coordinates_df_dict["labels"] = labels
+
+    sensor_coordinates_df = pd.DataFrame(sensor_coordinates_df_dict)
+
+    figure = px.scatter(sensor_coordinates_df, x="x", y="y", text="labels")
+    figure.update_traces(textposition="top center")
+    figure.update_layout({"title": f"Sensor coordinates: {reference!r}"})
     return figure
