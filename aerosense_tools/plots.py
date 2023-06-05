@@ -166,12 +166,12 @@ def plot_cp_curve(
     aerodynamic_pressures = raw_sensor_data.dataframe - p_inf
     cp = aerodynamic_pressures / q
 
-    suction_cp = cp[suction_side_barometers]
-    pressure_cp = cp[pressure_side_barometers]
+    suction_cp = cp[suction_side_barometers].iloc[0]
+    pressure_cp = cp[pressure_side_barometers].iloc[0]
 
     layout_dict = {
-        "title_text": f"Cp Curve at {datetime}",
-        "xaxis": {"title": "Chordwise sensor postition [m/1m]"},
+        "title_text": f"Cp curve at {datetime}",
+        "xaxis": {"title": "Chordwise sensor position [m/1m]"},
         "yaxis": {"title": "Cp", "range": [2, -2], "autorange": True},
     }
 
@@ -179,7 +179,7 @@ def plot_cp_curve(
 
     figure.add_scatter(
         x=x_pressure_side,
-        y=pressure_cp.iloc[0][(cp_minimum < pressure_cp.iloc[0]) & (pressure_cp.iloc[0] < cp_maximum)],
+        y=pressure_cp[(cp_minimum < pressure_cp) & (pressure_cp < cp_maximum)],
         marker={"color": "red"},
         mode="markers",
         name="Pressure Side Aerosense",
@@ -187,7 +187,7 @@ def plot_cp_curve(
 
     figure.add_scatter(
         x=x_suction_side,
-        y=suction_cp.iloc[0][(cp_minimum < suction_cp.iloc[0]) & (suction_cp.iloc[0] < cp_maximum)],
+        y=suction_cp[(cp_minimum < suction_cp) & (suction_cp < cp_maximum)],
         marker={"color": "blue"},
         mode="markers",
         name="Suction Side Aerosense",
