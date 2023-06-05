@@ -136,6 +136,8 @@ def plot_cp_curve(
         finish=finish_datetime,
     )
 
+    barometer_df.sort_values(by="datetime", inplace=True)
+
     data_columns = barometer_df.columns[barometer_df.columns.str.startswith("f")].tolist()
     signal_df = barometer_df[["datetime"] + data_columns].set_index("datetime")
 
