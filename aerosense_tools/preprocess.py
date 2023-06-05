@@ -3,9 +3,9 @@ import logging
 
 import numpy as np
 import pandas as pd
+from plotly import express as px
 
 from aerosense_tools.exceptions import EmptyDataFrameError
-from aerosense_tools.plots import plot_with_layout
 
 
 logger = logging.getLogger(__name__)
@@ -204,4 +204,6 @@ class SensorMeasurementSession:
             "legend_title": "Sensor",
         }
 
-        return plot_with_layout(plot_df, layout_dict=layout)
+        figure = px.line(plot_df)
+        figure.update_layout(layout)
+        return figure

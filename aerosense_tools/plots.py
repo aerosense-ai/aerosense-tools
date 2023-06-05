@@ -1,6 +1,9 @@
+import datetime as dt
+
 import pandas as pd
 from plotly import express as px
 
+from aerosense_tools.preprocess import RawSignal
 from aerosense_tools.queries import BigQuery
 from aerosense_tools.utils import get_cleaned_sensor_column_names
 
@@ -62,18 +65,6 @@ def plot_sensors(df, line_descriptions=None):
     return figure
 
 
-def plot_with_layout(df, layout_dict):
-    """Plot a line graph of each column of dataframe with index for x-axis. The layout is updated with data from a dict.
-
-    :param pandas.DataFrame df: a dataframe of sensor data filtered for the time period to be plotted
-    :param dict layout_dict: layout dictionary, to name the plot, axis and legend
-    :return: plotly.graph_objs.Figure: a line graph of the sensor data against time
-    """
-    figure = px.line(df)
-    figure.update_layout(layout_dict)
-    return figure
-
-
 def plot_pressure_bar_chart(df, y_minimum, y_maximum):
     """Plot a bar chart of pressures against barometers that measured them for a given instant in time.
 
@@ -106,17 +97,99 @@ def plot_sensor_coordinates(reference, labels=None):
     """
     sensor_coordinates = BigQuery().get_sensor_coordinates(reference=reference)
 
-    sensor_coordinates_df_dict = {
-        "x": sensor_coordinates["geometry"]["xy_coordinates"]["x_coordinates"],
-        "y": sensor_coordinates["geometry"]["xy_coordinates"]["y_coordinates"],
-    }
+    sensor_coordinates_df = pd.DataFrame(
+        {
+            "x": sensor_coordinates["geometry"]["xy_coordinates"]["x_coordinates"],
+            "y": sensor_coordinates["geometry"]["xy_coordinates"]["y_coordinates"],
+        }
+    )
 
-    if labels:
-        sensor_coordinates_df_dict["labels"] = labels
-
-    sensor_coordinates_df = pd.DataFrame(sensor_coordinates_df_dict)
+    sensor_coordinates_df["labels"] = labels or sensor_coordinates_df.index
 
     figure = px.scatter(sensor_coordinates_df, x="x", y="y", text="labels")
     figure.update_traces(textposition="top center")
     figure.update_layout({"title": f"Sensor coordinates: {reference!r}"})
+    return figure
+
+
+def plot_cp_curve(
+    installation_reference,
+    node_id,
+    sensor_coordinates_reference,
+    datetime,
+    u=10,
+    p_inf=1e5,
+    tolerance=1,
+):
+    client = BigQuery()
+    sensor_type_reference = "barometer"
+    start_datetime = datetime - dt.timedelta(seconds=tolerance / 2)
+    finish_datetime = datetime + dt.timedelta(seconds=tolerance / 2)
+
+    barometer_df, _ = client.get_sensor_data(
+        installation_reference=installation_reference,
+        node_id=node_id,
+        sensor_type_reference=sensor_type_reference,
+        start=start_datetime,
+        finish=finish_datetime,
+    )
+
+    data_columns = barometer_df.columns[barometer_df.columns.str.startswith("f")].tolist()
+    signal_df = barometer_df[["datetime"] + data_columns].set_index("datetime")
+
+    sensor_types_metadata = client.get_sensor_types()
+    signal_df.columns = sensor_types_metadata[sensor_type_reference]["sensors"]
+
+    raw_sensor_data = RawSignal(signal_df, sensor_type_reference)
+    raw_sensor_data.measurement_to_variable()
+
+    barometer_coordinates = client.get_sensor_coordinates(reference=sensor_coordinates_reference)
+
+    barometer_coordinates = pd.DataFrame(
+        {
+            "x": barometer_coordinates["geometry"]["xy_coordinates"]["x_coordinates"],
+            "y": barometer_coordinates["geometry"]["xy_coordinates"]["y_coordinates"],
+        }
+    )
+
+    barometer_coordinates["sensor"] = barometer_coordinates.index
+
+    x_pressure_side = barometer_coordinates[barometer_coordinates["y"] < 0]["x"].sort_values()
+    x_suction_side = barometer_coordinates[barometer_coordinates["y"] > 0]["x"].sort_values()
+
+    suction_side_barometers = raw_sensor_data.dataframe.columns[x_suction_side.index]
+    pressure_side_barometers = raw_sensor_data.dataframe.columns[x_pressure_side.index][:-1]
+
+    q = 0.5 * 1.225 * u**2
+    aerodynamic_pressures = raw_sensor_data.dataframe - p_inf
+    cp = aerodynamic_pressures / q
+
+    suction_cp = cp[suction_side_barometers]
+    pressure_cp = cp[pressure_side_barometers]
+
+    layout_dict = {
+        "title_text": f"Cp Curve at {datetime}",
+        "xaxis": {"title": "Chordwise sensor postition [m/1m]"},
+        "yaxis": {"title": "Cp", "range": [2, -2], "autorange": True},
+    }
+
+    figure = px.scatter(height=800)
+
+    figure.add_scatter(
+        x=x_pressure_side,
+        y=pressure_cp.iloc[0][(-10 < pressure_cp.iloc[0]) & (pressure_cp.iloc[0] < 3)],
+        marker={"color": "red"},
+        mode="markers",
+        name="Pressure Side Aerosense",
+    )
+
+    figure.add_scatter(
+        x=x_suction_side,
+        y=suction_cp.iloc[0][(-10 < suction_cp.iloc[0]) & (suction_cp.iloc[0] < 3)],
+        marker={"color": "blue"},
+        mode="markers",
+        name="Suction Side Aerosense",
+    )
+
+    figure.update_layout(layout_dict)
     return figure
