@@ -128,7 +128,8 @@ def plot_cp_curve(
     start_datetime = datetime - dt.timedelta(seconds=tolerance / 2)
     finish_datetime = datetime + dt.timedelta(seconds=tolerance / 2)
 
-    barometer_df, _ = client.get_sensor_data(
+    # Get barometer data around the given datetime.
+    raw_barometer_data, _ = client.get_sensor_data(
         installation_reference=installation_reference,
         node_id=node_id,
         sensor_type_reference=sensor_type_reference,
@@ -136,57 +137,49 @@ def plot_cp_curve(
         finish=finish_datetime,
     )
 
-    barometer_df.sort_values(by="datetime", inplace=True)
-    barometer_df = barometer_df.iloc[:1]
+    # Get the earliest piece of data.
+    raw_barometer_data.sort_values(by="datetime", inplace=True)
+    raw_barometer_data = raw_barometer_data.iloc[:1]
 
-    data_columns = barometer_df.columns[barometer_df.columns.str.startswith("f")].tolist()
-    signal_df = barometer_df[["datetime"] + data_columns].set_index("datetime")
+    # Drop metadata columns.
+    data_column_names = raw_barometer_data.columns[raw_barometer_data.columns.str.startswith("f")].tolist()
+    raw_barometer_data = raw_barometer_data[["datetime"] + data_column_names].set_index("datetime")
 
+    # Get sensor names.
     sensor_types_metadata = client.get_sensor_types()
-    signal_df.columns = sensor_types_metadata[sensor_type_reference]["sensors"]
+    raw_barometer_data.columns = sensor_types_metadata[sensor_type_reference]["sensors"]
 
-    raw_sensor_data = RawSignal(signal_df, sensor_type_reference)
-    raw_sensor_data.measurement_to_variable()
+    # Transform raw barometer data to correct units.
+    converted_barometer_data = RawSignal(raw_barometer_data, sensor_type_reference)
+    converted_barometer_data.measurement_to_variable()
 
+    # Get barometer coordinates.
     barometer_coordinates = client.get_sensor_coordinates(reference=sensor_coordinates_reference)
-
     barometer_coordinates = pd.DataFrame(
         {
             "x": barometer_coordinates["geometry"]["xy_coordinates"]["x_coordinates"],
             "y": barometer_coordinates["geometry"]["xy_coordinates"]["y_coordinates"],
         }
     )
-
     barometer_coordinates["sensor"] = barometer_coordinates.index
 
-    x_pressure_side = barometer_coordinates[barometer_coordinates["y"] < 0]["x"].sort_values()
+    # Split x-coordinates into suction side and pressure side of blade.
     x_suction_side = barometer_coordinates[barometer_coordinates["y"] > 0]["x"].sort_values()
+    suction_side_barometer_names = converted_barometer_data.dataframe.columns[x_suction_side.index]
 
-    suction_side_barometers = raw_sensor_data.dataframe.columns[x_suction_side.index]
-    pressure_side_barometers = raw_sensor_data.dataframe.columns[x_pressure_side.index][:-1]
+    x_pressure_side = barometer_coordinates[barometer_coordinates["y"] < 0]["x"].sort_values()
+    pressure_side_barometer_names = converted_barometer_data.dataframe.columns[x_pressure_side.index][:-1]
 
+    # Calculate Cp.
     q = 0.5 * 1.225 * u**2
-    aerodynamic_pressures = raw_sensor_data.dataframe - p_inf
+    aerodynamic_pressures = converted_barometer_data.dataframe - p_inf
     cp = aerodynamic_pressures / q
 
-    suction_cp = cp[suction_side_barometers].iloc[0]
-    pressure_cp = cp[pressure_side_barometers].iloc[0]
-
-    layout_dict = {
-        "title_text": f"Cp curve at {datetime}",
-        "xaxis": {"title": "Chordwise sensor position [m/1m]"},
-        "yaxis": {"title": "Cp", "range": [2, -2], "autorange": True},
-    }
+    # Split Cp values into suction side and pressure side of blade.
+    suction_cp = cp[suction_side_barometer_names].iloc[0]
+    pressure_cp = cp[pressure_side_barometer_names].iloc[0]
 
     figure = px.scatter(height=800)
-
-    figure.add_scatter(
-        x=x_pressure_side,
-        y=pressure_cp[(cp_minimum < pressure_cp) & (pressure_cp < cp_maximum)],
-        marker={"color": "red"},
-        mode="markers",
-        name="Pressure Side Aerosense",
-    )
 
     figure.add_scatter(
         x=x_suction_side,
@@ -196,5 +189,20 @@ def plot_cp_curve(
         name="Suction Side Aerosense",
     )
 
-    figure.update_layout(layout_dict)
+    figure.add_scatter(
+        x=x_pressure_side,
+        y=pressure_cp[(cp_minimum < pressure_cp) & (pressure_cp < cp_maximum)],
+        marker={"color": "red"},
+        mode="markers",
+        name="Pressure Side Aerosense",
+    )
+
+    figure.update_layout(
+        {
+            "title_text": f"Cp curve at {datetime}",
+            "xaxis": {"title": "Chordwise sensor position [m/1m]"},
+            "yaxis": {"title": "Cp", "range": [2, -2], "autorange": True},
+        }
+    )
+
     return figure
