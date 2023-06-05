@@ -120,6 +120,8 @@ def plot_cp_curve(
     u=10,
     p_inf=1e5,
     tolerance=1,
+    cp_minimum=-10,
+    cp_maximum=3,
 ):
     client = BigQuery()
     sensor_type_reference = "barometer"
@@ -177,7 +179,7 @@ def plot_cp_curve(
 
     figure.add_scatter(
         x=x_pressure_side,
-        y=pressure_cp.iloc[0][(-10 < pressure_cp.iloc[0]) & (pressure_cp.iloc[0] < 3)],
+        y=pressure_cp.iloc[0][(cp_minimum < pressure_cp.iloc[0]) & (pressure_cp.iloc[0] < cp_maximum)],
         marker={"color": "red"},
         mode="markers",
         name="Pressure Side Aerosense",
@@ -185,7 +187,7 @@ def plot_cp_curve(
 
     figure.add_scatter(
         x=x_suction_side,
-        y=suction_cp.iloc[0][(-10 < suction_cp.iloc[0]) & (suction_cp.iloc[0] < 3)],
+        y=suction_cp.iloc[0][(cp_minimum < suction_cp.iloc[0]) & (suction_cp.iloc[0] < cp_maximum)],
         marker={"color": "blue"},
         mode="markers",
         name="Suction Side Aerosense",
