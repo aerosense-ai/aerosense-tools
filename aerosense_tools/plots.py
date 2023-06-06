@@ -181,7 +181,7 @@ def plot_cp_curve(
     suction_side_barometer_names = converted_barometer_data.dataframe.columns[x_suction_side.index]
 
     x_pressure_side = barometer_coordinates[barometer_coordinates["y"] < 0]["x"].sort_values()
-    pressure_side_barometer_names = converted_barometer_data.dataframe.columns[x_pressure_side.index][:-1]
+    pressure_side_barometer_names = converted_barometer_data.dataframe.columns[x_pressure_side.index]
 
     # Calculate Cp.
     q = 0.5 * 1.225 * u**2
