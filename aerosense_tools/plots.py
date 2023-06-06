@@ -123,11 +123,12 @@ def plot_cp_curve(
     cp_minimum=-10,
     cp_maximum=3,
 ):
-    """Plot a Cp curve for a blade based on barometer data and the positions of the barometers.
+    """Plot a Cp curve for a blade based on barometer data and the positions of the barometers. The earliest datetime
+    within the tolerance is used.
 
     :param str installation_reference: the installation the barometers belong to
     :param str node_id: the node the barometers belong to
-    :param str sensor_coordinates_reference: the reference name of the barometer coordinates
+    :param str sensor_coordinates_reference: the reference name of the barometers' coordinates
     :param datetime.datetime datetime: the datetime to plot the Cp curve for
     :param float tolerance: the tolerance on the given datetime in seconds
     :param float u: the free stream fluid velocity in m/s
@@ -148,10 +149,9 @@ def plot_cp_curve(
         sensor_type_reference=sensor_type_reference,
         start=start_datetime,
         finish=finish_datetime,
+        row_limit=1,
     )
 
-    # Get the earliest piece of data.
-    raw_barometer_data.sort_values(by="datetime", inplace=True)
     raw_barometer_data = raw_barometer_data.iloc[:1]
 
     # Drop metadata columns.
