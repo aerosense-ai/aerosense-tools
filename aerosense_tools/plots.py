@@ -117,12 +117,25 @@ def plot_cp_curve(
     node_id,
     sensor_coordinates_reference,
     datetime,
+    tolerance=1,
     u=10,
     p_inf=1e5,
-    tolerance=1,
     cp_minimum=-10,
     cp_maximum=3,
 ):
+    """Plot a Cp curve for a blade based on barometer data and the positions of the barometers.
+
+    :param str installation_reference: the installation the barometers belong to
+    :param str node_id: the node the barometers belong to
+    :param str sensor_coordinates_reference: the reference name of the barometer coordinates
+    :param datetime.datetime datetime: the datetime to plot the Cp curve for
+    :param float tolerance: the tolerance on the given datetime in seconds
+    :param float u: the free stream fluid velocity in m/s
+    :param float p_inf: the freestream pressure in Pa
+    :param float cp_minimum: the minimum Cp value to include in the plot
+    :param float cp_maximum: the maximum Cp value to include in the plot
+    :return plotly.graph_objs.Figure: the Cp plot
+    """
     client = BigQuery()
     sensor_type_reference = "barometer"
     start_datetime = datetime - dt.timedelta(seconds=tolerance / 2)
