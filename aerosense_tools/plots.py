@@ -1,5 +1,3 @@
-import datetime as dt
-
 import pandas as pd
 from plotly import express as px
 
@@ -112,25 +110,11 @@ def plot_sensor_coordinates(reference, labels=None):
     return figure
 
 
-def plot_cp_curve(
-    installation_reference,
-    node_id,
-    sensor_coordinates_reference,
-    datetime,
-    tolerance=1,
-    u=10,
-    p_inf=1e5,
-    cp_minimum=-10,
-    cp_maximum=3,
-):
-    """Plot a Cp curve for a blade based on barometer data and the positions of the barometers. The earliest datetime
-    within the tolerance is used.
+def plot_cp_curve(df, sensor_coordinates_reference, u=10, p_inf=1e5, cp_minimum=-10, cp_maximum=3):
+    """Plot a Cp curve for a blade based on barometer data and the positions of the barometers.
 
-    :param str installation_reference: the installation the barometers belong to
-    :param str node_id: the node the barometers belong to
+    :param pandas.DataFrame df: a dataframe of pressure data from any number of barometers for an instant in time
     :param str sensor_coordinates_reference: the reference name of the barometers' coordinates
-    :param datetime.datetime datetime: the datetime to plot the Cp curve for
-    :param float tolerance: the tolerance on the given datetime in seconds
     :param float u: the free stream fluid velocity in m/s
     :param float p_inf: the freestream pressure in Pa
     :param float cp_minimum: the minimum Cp value to include in the plot
@@ -139,20 +123,8 @@ def plot_cp_curve(
     """
     client = BigQuery()
     sensor_type_reference = "barometer"
-    start_datetime = datetime - dt.timedelta(seconds=tolerance / 2)
-    finish_datetime = datetime + dt.timedelta(seconds=tolerance / 2)
-
-    # Get barometer data around the given datetime.
-    raw_barometer_data, _ = client.get_sensor_data(
-        installation_reference=installation_reference,
-        node_id=node_id,
-        sensor_type_reference=sensor_type_reference,
-        start=start_datetime,
-        finish=finish_datetime,
-        row_limit=1,
-    )
-
-    raw_barometer_data = raw_barometer_data.iloc[:1]
+    raw_barometer_data = df.iloc[:1]
+    datetime = raw_barometer_data["datetime"].iloc[0]
 
     # Drop metadata columns.
     data_column_names = raw_barometer_data.columns[raw_barometer_data.columns.str.startswith("f")].tolist()
