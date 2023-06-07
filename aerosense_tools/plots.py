@@ -171,7 +171,7 @@ def plot_cp_curve(df, sensor_coordinates_reference, u=10, p_inf=1e5, cp_minimum=
         y=suction_cp[(cp_minimum < suction_cp) & (suction_cp < cp_maximum)],
         marker={"color": "blue"},
         mode="markers",
-        name="Suction Side Aerosense",
+        name="Suction side",
     )
 
     figure.add_scatter(
@@ -179,7 +179,7 @@ def plot_cp_curve(df, sensor_coordinates_reference, u=10, p_inf=1e5, cp_minimum=
         y=pressure_cp[(cp_minimum < pressure_cp) & (pressure_cp < cp_maximum)],
         marker={"color": "red"},
         mode="markers",
-        name="Pressure Side Aerosense",
+        name="Pressure side",
     )
 
     figure.update_layout(
