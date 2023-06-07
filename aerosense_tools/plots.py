@@ -110,11 +110,12 @@ def plot_sensor_coordinates(reference, labels=None):
     return figure
 
 
-def plot_cp_curve(df, sensor_coordinates_reference, u=10, p_inf=1e5, cp_minimum=-10, cp_maximum=3):
+def plot_cp_curve(df, sensor_coordinates_reference, air_density=1.225, u=10, p_inf=1e5, cp_minimum=-10, cp_maximum=3):
     """Plot a Cp curve for a blade based on barometer data and the positions of the barometers.
 
     :param pandas.DataFrame df: a dataframe of pressure data from any number of barometers for an instant in time
     :param str sensor_coordinates_reference: the reference name of the barometers' coordinates
+    :param float air_density: the air density in kg/m^3
     :param float u: the free stream fluid velocity in m/s
     :param float p_inf: the freestream pressure in Pa
     :param float cp_minimum: the minimum Cp value to include in the plot
@@ -156,7 +157,7 @@ def plot_cp_curve(df, sensor_coordinates_reference, u=10, p_inf=1e5, cp_minimum=
     pressure_side_barometer_names = converted_barometer_data.dataframe.columns[x_pressure_side.index]
 
     # Calculate Cp.
-    q = 0.5 * 1.225 * u**2
+    q = 0.5 * air_density * u**2
     aerodynamic_pressures = converted_barometer_data.dataframe - p_inf
     cp = aerodynamic_pressures / q
 
