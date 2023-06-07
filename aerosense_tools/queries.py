@@ -325,22 +325,27 @@ class BigQuery:
             job_config=query_config,
         )
 
-    def get_sensor_coordinates(self, reference):
-        """Get the sensor coordinates with the given reference from the sensor coordinates table if they exist.
+    def get_sensor_coordinates(self, reference=None):
+        """Get the sensor coordinates with the given reference from the sensor coordinates table if they exist. If no
+        reference is given, get all sensor coordinates.
 
-        :param str reference: the reference of the coordinates to get
+        :param str|None reference: the reference of the coordinates to get
         :return dict|None: the sensor coordinates if they exist
         """
-        query_config = bigquery.QueryJobConfig(
-            query_parameters=[bigquery.ScalarQueryParameter("reference", "STRING", reference)]
-        )
+        if not reference:
+            return self.client.query(f"SELECT * FROM {DATASET_NAME}.sensor_coordinates").result().to_dataframe()
 
-        result = self.client.query(
-            f"""SELECT * FROM {DATASET_NAME}.sensor_coordinates
-            WHERE reference = @reference;
-            """,
-            job_config=query_config,
-        ).result()
+        else:
+            query_config = bigquery.QueryJobConfig(
+                query_parameters=[bigquery.ScalarQueryParameter("reference", "STRING", reference)]
+            )
+
+            result = self.client.query(
+                f"""SELECT * FROM {DATASET_NAME}.sensor_coordinates
+                WHERE reference = @reference;
+                """,
+                job_config=query_config,
+            ).result()
 
         if result.total_rows == 0:
             return None
