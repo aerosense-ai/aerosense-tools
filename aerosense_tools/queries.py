@@ -1,11 +1,17 @@
 import datetime
 import datetime as dt
 import json
+import logging
 import os
 
 import jsonschema
 from google.cloud import bigquery
 from octue.cloud.storage import GoogleCloudStorageClient
+
+from aerosense_tools.preprocess import RawSignal
+
+
+logger = logging.getLogger(__name__)
 
 
 DATASET_NAME = "aerosense-twined.greta"
@@ -397,6 +403,115 @@ class BigQuery:
         ).result()
 
         return result.to_dataframe()
+
+    def extract_and_add_new_measurement_sessions(self, sensors=None):
+        table_name = DATASET_NAME + ".sessions"
+
+        sensors = sensors or (
+            "connection_statistics",
+            "magnetometer",
+            "connection-statistics",
+            "barometer",
+            "barometer_thermometer",
+            "accelerometer",
+            "gyroscope",
+            "battery_info",
+            "differential_barometer",
+        )
+
+        installations = [installation["value"] for installation in self.get_installations()]
+
+        for installation_reference in installations:
+            nodes = self.get_nodes(installation_reference)
+
+            for node_id in nodes:
+                for sensor_type_reference in sensors:
+                    logger.info(
+                        "Getting finish datetime for installation %r, node %r, sensor type %r.",
+                        installation_reference,
+                        node_id,
+                        sensor_type_reference,
+                    )
+
+                    result = (
+                        self.client.query(
+                            f"""
+                        SELECT finish_datetime FROM {table_name}
+                        WHERE installation_reference = @installation_reference
+                        AND node_id = @node_id
+                        AND sensor_type_reference = sensor_type_reference
+                        ORDER BY finish_datetime DESC
+                        LIMIT 1
+                        """,
+                            job_config=bigquery.QueryJobConfig(
+                                query_parameters=[
+                                    bigquery.ScalarQueryParameter(
+                                        "installation_reference", "STRING", installation_reference
+                                    ),
+                                    bigquery.ScalarQueryParameter("node_id", "STRING", node_id),
+                                    bigquery.ScalarQueryParameter(
+                                        "sensor_type_reference", "STRING", sensor_type_reference
+                                    ),
+                                ]
+                            ),
+                        )
+                        .result()
+                        .to_dataframe()
+                    )
+
+                    try:
+                        latest_session_end_datetime = result.iloc[0]["finish_datetime"].to_pydatetime()
+                    except IndexError:
+                        logger.info(
+                            "No sessions available for installation %r, node %r, sensor type %r.",
+                            installation_reference,
+                            node_id,
+                            sensor_type_reference,
+                        )
+                        continue
+
+                    sensor_data_df, _ = self.get_sensor_data(
+                        installation_reference=installation_reference,
+                        node_id=node_id,
+                        sensor_type_reference=sensor_type_reference,
+                        start=latest_session_end_datetime,
+                        finish=datetime.datetime.now(),
+                    )
+
+                    if sensor_data_df.empty:
+                        logger.info(
+                            "No new sessions for installation %r, node %r, sensor type %r.",
+                            installation_reference,
+                            node_id,
+                            sensor_type_reference,
+                        )
+
+                        continue
+
+                    _, measurement_sessions = RawSignal(
+                        dataframe=sensor_data_df,
+                        sensor_type=sensor_type_reference,
+                    ).extract_measurement_sessions()
+
+                    measurement_sessions["installation_reference"] = installation_reference
+                    measurement_sessions["node_id"] = node_id
+                    measurement_sessions["sensor_type_reference"] = sensor_type_reference
+
+                    # Reorder columns.
+                    measurement_sessions = measurement_sessions[
+                        [
+                            "installation_reference",
+                            "node_id",
+                            "sensor_type_reference",
+                            "start_datetime",
+                            "finish_datetime",
+                        ]
+                    ]
+
+                    self.client.load_table_from_dataframe(
+                        dataframe=measurement_sessions,
+                        destination=table_name,
+                    ).result()
 
     def query(self, query_string):
         """Query the dataset with an arbitrary query.
