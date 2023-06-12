@@ -1,3 +1,4 @@
+import datetime
 import datetime as dt
 import json
 import os
@@ -353,6 +354,49 @@ class BigQuery:
         result = dict(result.to_dataframe().iloc[0])
         result["geometry"] = json.loads(result["geometry"])
         return result
+
+    def get_measurement_sessions(
+        self,
+        installation_reference,
+        node_id,
+        sensor_type_reference,
+        start=None,
+        finish=None,
+    ):
+        """Get the measurement sessions that exist for the given sensor type at the given node of the given installation
+        that start and finish within the given start and finish datetimes.
+
+        :param str installation_reference: the reference of the installation to get measurement sessions for
+        :param str node_id: the ID of the node to get measurement sessions for
+        :param str sensor_type_reference: the type of sensor to get measurement sessions for
+        :param datetime.datetime start: the time after which the sessions start
+        :param datetime.datetime finish: the time before which the sessions end
+        :return pandas.DataFrame: the measurement sessions
+        """
+        query_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("installation_reference", "STRING", installation_reference),
+                bigquery.ScalarQueryParameter("node_id", "STRING", node_id),
+                bigquery.ScalarQueryParameter("sensor_type_reference", "STRING", sensor_type_reference),
+                bigquery.ScalarQueryParameter("start", "DATETIME", start),
+                bigquery.ScalarQueryParameter("finish", "DATETIME", finish),
+            ]
+        )
+
+        result = self.client.query(
+            f"""
+            SELECT * FROM {DATASET_NAME}.sessions
+            WHERE installation_reference = @installation_reference
+            AND node_id = @node_id
+            AND sensor_type_reference = @sensor_type_reference
+            AND start_time > @start
+            AND end_time <= @finish
+            ORDER BY start_time
+            """,
+            job_config=query_config,
+        ).result()
+
+        return result.to_dataframe()
 
     def query(self, query_string):
         """Query the dataset with an arbitrary query.
