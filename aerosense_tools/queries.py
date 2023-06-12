@@ -389,9 +389,9 @@ class BigQuery:
             WHERE installation_reference = @installation_reference
             AND node_id = @node_id
             AND sensor_type_reference = @sensor_type_reference
-            AND start_time > @start
-            AND end_time <= @finish
-            ORDER BY start_time
+            AND start_datetime > @start
+            AND finish_datetime <= @finish
+            ORDER BY start_datetime
             """,
             job_config=query_config,
         ).result()
