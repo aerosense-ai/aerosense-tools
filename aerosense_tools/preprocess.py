@@ -1,10 +1,11 @@
 import datetime as dt
 import logging
+
 import numpy as np
 import pandas as pd
+from plotly import express as px
 
 from aerosense_tools.exceptions import EmptyDataFrameError
-from aerosense_tools.plots import plot_with_layout
 
 
 logger = logging.getLogger(__name__)
@@ -15,20 +16,19 @@ class RawData:
 
     def __init__(self, dataframe, sensor_type):
         if dataframe.empty:
-            raise EmptyDataFrameError("Empty DataFrame is not allowed for the RawData Class")
+            raise EmptyDataFrameError("Empty DataFrame is not allowed for the RawSignal Class")
+
         self.dataframe = dataframe
         self.sensor_type = sensor_type
 
     def pad_gaps(self, threshold=dt.timedelta(seconds=60)):
-        """Checks for missing data. If the gap between samples (timedelta) is
-         higher than the given threshold, then the last sample before the gap
-        start is replaced with NaN. Thus, no interpolation will be performed
-        during the non-sampling time window.
+        """Checks for missing data. If the gap between samples (timedelta) is higher than the given threshold, then the
+        last sample before the gap start is replaced with NaN. Thus, no interpolation will be performed during the
+        non-sampling time window.
 
         :param datetime.timedelta threshold: maximum gap between two samples as a timedelta type
         :return pandas.Dataframe: inplace modified dataframe with the end sample of each session replaced with NaN
         """
-
         self.dataframe[self.dataframe.index.to_series().diff() > threshold] = np.NaN
 
     def convert_int_to_measurement(self, sensor_conversion_constants=None):
@@ -68,7 +68,6 @@ class RawData:
         pandas.DataFrame): List with SensorMeasurementSession objects, a dataframe with sessions' information such as
         start and end times, duration, sensor statistics
         """
-
         measurement_sessions = []
         session_statistics = []
         sample_time = pd.DataFrame(self.dataframe.index)
@@ -78,19 +77,24 @@ class RawData:
         session_starts.iloc[0] = session_ends.iloc[-1] = True
 
         # Edge case of a single measurement point:
-        single_sample = sample_time.index[session_starts] == sample_time.index[session_ends]
-        if any(single_sample):
+        is_single_sample = sample_time.index[session_starts] == sample_time.index[session_ends]
+
+        if any(is_single_sample):
             logger.warning(
                 "Sensor type {} has single measurement points at {}".format(
-                    self.sensor_type, sample_time[session_starts][single_sample]
+                    self.sensor_type,
+                    sample_time[session_starts][is_single_sample],
                 )
             )
 
-        start_rows = sample_time.index[session_starts][~single_sample]
-        end_rows = sample_time.index[session_ends][~single_sample]
+        start_rows = sample_time.index[session_starts][~is_single_sample]
+        end_rows = sample_time.index[session_ends][~is_single_sample]
 
         session_times = pd.DataFrame(
-            {"start": sample_time["datetime"][start_rows].to_list(), "end": sample_time["datetime"][end_rows].to_list()}
+            {
+                "start": sample_time["datetime"][start_rows].to_list(),
+                "end": sample_time["datetime"][end_rows].to_list(),
+            }
         )
 
         for start_row, end_row in zip(start_rows, end_rows):
@@ -107,12 +111,12 @@ class RawData:
 class SensorMeasurementSession:
     """A class representing continuous measurement series for a particular sensor. The class wraps some frequently used
     Pandas.DataFrame operations as well as plotly figure setup.
-
     """
 
     def __init__(self, dataframe, sensor_type):
         if dataframe.empty:
             raise EmptyDataFrameError("Empty DataFrame is not allowed for the SensorMeasurementSession Class")
+
         self.dataframe = dataframe
         self.sensor_type = sensor_type
         self.start = dataframe.index[0]
@@ -127,24 +131,18 @@ class SensorMeasurementSession:
         :param datetime.datetime timeseries_start: start constant step time series at specified time
         :return SensorMeasurementSession: sensor session with resampled and interpolated data
         """
-
         new_time_vector = pd.date_range(start=timeseries_start or self.start, end=self.end, freq=time_step)
-
         return self.to_new_time_vector(new_time_vector)
 
     def to_new_time_vector(self, new_time_vector):
-        """Interpolates the original dataframe onto a new time index.
+        """Interpolate the original dataframe onto a new time index.
 
-        :param new_time_vector: the new time index
-        :type new_time_vector: pandas.DatetimeIndex
-        :return: a new SensorMeasurementSession object with the interpolated dataframe
-        :rtype: SensorMeasurementSession
+        :param pandas.DatetimeIndex new_time_vector: the new time index
+        :return SensorMeasurementSession: a new SensorMeasurementSession object with the interpolated dataframe
         """
-
         new_dataframe = pd.DataFrame(index=new_time_vector)
         new_dataframe = pd.concat([self.dataframe, new_dataframe], axis=1)
         new_dataframe = new_dataframe.interpolate("index", limit_area="inside").reindex(new_time_vector)
-
         return SensorMeasurementSession(new_dataframe, self.sensor_type)
 
     def merge_with(self, *secondary_sessions):
@@ -195,9 +193,8 @@ class SensorMeasurementSession:
         :param sensor_names: Specific sensors to plot
         :param plot_start_offset: start data plot after some time
         :param plot_max_time: limit to the time plotted
-        :return: plotly.graph_objs.Figure: a line graph of the sensor data against time
+        :return plotly.graph_objs.Figure: a line graph of the sensor data against time
         """
-
         plot_max_time = plot_max_time or self.duration - plot_start_offset
         plot_df = self.trim(plot_start_offset, self.duration - plot_start_offset - plot_max_time).dataframe
 
@@ -210,5 +207,7 @@ class SensorMeasurementSession:
             "yaxis_title": sensor_types_metadata[self.sensor_type]["variable"],
             "legend_title": "Sensor",
         }
-        figure = plot_with_layout(plot_df, layout_dict=layout)
+
+        figure = px.line(plot_df)
+        figure.update_layout(layout)
         return figure

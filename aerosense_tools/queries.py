@@ -1,9 +1,15 @@
 import datetime as dt
 import json
+import os
+
+import jsonschema
 from google.cloud import bigquery
+from octue.cloud.storage import GoogleCloudStorageClient
 
 
+DATASET_NAME = "aerosense-twined.greta"
 ROW_LIMIT = 10000
+SENSOR_COORDINATES_SCHEMA_URI = "https://jsonschema.registry.octue.com/aerosense/sensor-coordinates/0.1.4.json"
 
 
 class BigQuery:
@@ -29,14 +35,14 @@ class BigQuery:
         period. The time period defaults to the last day.
 
         :param str installation_reference: the reference of the installation to get sensor data from
-        :param str|None node_id: the node on the installation to get sensor data from
+        :param str node_id: the node on the installation to get sensor data from
         :param str sensor_type_reference: the type of sensor from which to get the data
         :param datetime.datetime|None start: defaults to 1 day before the given finish
         :param datetime.datetime|None finish: defaults to the current datetime
         :param int|None row_limit: if set to `None`, no row limit is applied; if set to an integer, the row limit is set to this; defaults to 10000
         :return (pandas.Dataframe, bool): the sensor data and whether the data has been limited by a row limit
         """
-        table_name = f"aerosense-twined.greta.sensor_data_{sensor_type_reference}"
+        table_name = f"{DATASET_NAME}.sensor_data_{sensor_type_reference}"
 
         conditions = """
         WHERE datetime BETWEEN @start AND @finish
@@ -91,13 +97,13 @@ class BigQuery:
         The first datetime within a tolerance of ±0.5 * `tolerance` is used.
 
         :param str installation_reference: the reference of the installation to get sensor data from
-        :param str|None node_id: the node on the installation to get sensor data from
+        :param str node_id: the node on the installation to get sensor data from
         :param str sensor_type_reference: the type of sensor from which to get the data
         :param datetime.datetime|None datetime: the datetime to get the data at
         :param float tolerance: the tolerance on the given datetime in seconds
         :return pandas.Dataframe: the sensor data at the given datetime
         """
-        table_name = f"aerosense-twined.greta.sensor_data_{sensor_type_reference}"
+        table_name = f"{DATASET_NAME}.sensor_data_{sensor_type_reference}"
 
         start_datetime = datetime - dt.timedelta(seconds=tolerance / 2)
         finish_datetime = datetime + dt.timedelta(seconds=tolerance / 2)
@@ -128,14 +134,14 @@ class BigQuery:
         last day.
 
         :param str installation_reference: the reference of the installation to get sensor data from
-        :param str|None node_id: the node on the installation to get sensor data from
+        :param str node_id: the node on the installation to get sensor data from
         :param datetime.datetime|None start: defaults to 1 day before the given finish
         :param datetime.datetime|None finish: defaults to the current datetime
         :return pandas.Dataframe: the aggregated connection statistics
         """
-        query = """
+        query = f"""
         SELECT datetime, filtered_rssi, raw_rssi, tx_power, allocated_heap_memory
-        FROM `aerosense-twined.greta.connection_statistics_agg`
+        FROM `{DATASET_NAME}.connection_statistics_agg`
         WHERE datetime BETWEEN @start AND @finish
         AND installation_reference = @installation_reference
         AND node_id = @node_id
@@ -155,14 +161,73 @@ class BigQuery:
 
         return self.client.query(query, job_config=query_config).to_dataframe()
 
+    def get_microphone_metadata(self, installation_reference, node_id, start=None, finish=None):
+        """Get metadata for microphone data for the given node of the given installation over the given time period. The
+        time period defaults to the last day.
+
+        :param str installation_reference: the reference of the installation to get microphone metadata from
+        :param str node_id: the node on the installation to get microphone metadata from
+        :param datetime.datetime|None start: the start of the time period; defaults to 1 day before the given finish
+        :param datetime.datetime|None finish: the end of the time period; defaults to the current datetime
+        :return pandas.Dataframe: the microphone metadata
+        """
+        query = f"""
+        SELECT *
+        FROM `{DATASET_NAME}.microphone_data`
+        WHERE datetime BETWEEN @start AND @finish
+        AND installation_reference = @installation_reference
+        AND node_id = @node_id
+        """
+
+        start, finish = self._get_time_period(start, finish)
+
+        query_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("start", "DATETIME", start),
+                bigquery.ScalarQueryParameter("finish", "DATETIME", finish),
+                bigquery.ScalarQueryParameter("installation_reference", "STRING", installation_reference),
+                bigquery.ScalarQueryParameter("node_id", "STRING", node_id),
+            ]
+        )
+
+        return self.client.query(query, job_config=query_config).to_dataframe()
+
+    def download_microphone_data_at_datetime(self, installation_reference, node_id, datetime, tolerance=1):
+        """Download the microphone datafile for the given node of the given installation at the given datetime (within
+        the given tolerance). If more than one datetime is found within the tolerance, the datafile with the earliest
+        timestamp is downloaded.
+
+        :param str installation_reference: the reference of the installation to get microphone data from
+        :param str node_id: the node on the installation to get microphone data from
+        :param datetime.datetime datetime: the datetime to get the data for
+        :param float tolerance: the tolerance on the given datetime in seconds
+        :return str: the local path the microphone datafile was downloaded to
+        """
+        start_datetime = datetime - dt.timedelta(seconds=tolerance / 2)
+        finish_datetime = datetime + dt.timedelta(seconds=tolerance / 2)
+
+        microphone_metadata = self.get_microphone_metadata(
+            installation_reference=installation_reference,
+            node_id=node_id,
+            start=start_datetime,
+            finish=finish_datetime,
+        )
+
+        cloud_path = microphone_metadata.iloc[0]["path"]
+        extension = os.path.splitext(cloud_path)[-1]
+        local_path = f"microphone-data-{datetime.isoformat()}" + extension
+
+        GoogleCloudStorageClient().download_to_file(local_path=local_path, cloud_path=cloud_path)
+        return os.path.abspath(local_path)
+
     def get_installations(self):
         """Get the available installations.
 
         :return list(dict): the available installations
         """
-        query = """
+        query = f"""
         SELECT reference, turbine_id, location
-        FROM `aerosense-twined.greta.installation`
+        FROM `{DATASET_NAME}.installation`
         ORDER BY reference
         """
 
@@ -178,9 +243,9 @@ class BigQuery:
 
         :return list(dict): the available sensor types and their metadata
         """
-        query = """
+        query = f"""
         SELECT name, metadata
-        FROM `aerosense-twined.greta.sensor_type`
+        FROM `{DATASET_NAME}.sensor_type`
         ORDER BY name
         """
 
@@ -195,8 +260,8 @@ class BigQuery:
         :param str installation_reference: the reference of the installation to get the node IDs of
         :return list(str): the node IDs for the installation
         """
-        query = """
-        SELECT node_id FROM `aerosense-twined.greta.sensor_data`
+        query = f"""
+        SELECT node_id FROM `{DATASET_NAME}.sensor_data`
         WHERE installation_reference = @installation_reference
         GROUP BY node_id
         ORDER BY node_id
@@ -207,6 +272,95 @@ class BigQuery:
         )
 
         return self.client.query(query, job_config=query_config).to_dataframe()["node_id"].to_list()
+
+    def add_sensor_coordinates(self, coordinates):
+        """Add the given sensor coordinates to the sensor coordinates table.
+
+        :param dict coordinates: the sensor coordinates
+        :return None:
+        """
+        jsonschema.validate(coordinates, {"$ref": SENSOR_COORDINATES_SCHEMA_URI})
+
+        if self.get_sensor_coordinates(coordinates["reference"]):
+            raise ValueError(f"Sensor coordinates with the reference {coordinates['reference']!r} already exist.")
+
+        errors = self.client.insert_rows(
+            table=self.client.get_table(DATASET_NAME + ".sensor_coordinates"),
+            rows=[
+                {
+                    "reference": coordinates["reference"],
+                    "kind": coordinates["kind"],
+                    "geometry": json.dumps(coordinates["geometry"]),
+                }
+            ],
+        )
+
+        if errors:
+            raise ValueError(errors)
+
+    def update_sensor_coordinates(self, reference, kind, geometry):
+        """Update the given sensor coordinates in the sensor coordinates table.
+
+        :param str reference: the reference of the coordinates to update
+        :param str kind: the kind of the new coordinates
+        :param dict geometry: the new coordinates
+        :return None:
+        """
+        coordinates = {"reference": reference, "kind": kind, "geometry": geometry}
+        jsonschema.validate(coordinates, {"$ref": SENSOR_COORDINATES_SCHEMA_URI})
+
+        query_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("kind", "STRING", kind),
+                bigquery.ScalarQueryParameter("geometry", "JSON", json.dumps(geometry)),
+                bigquery.ScalarQueryParameter("reference", "STRING", reference),
+            ]
+        )
+
+        self.client.query(
+            f"""UPDATE {DATASET_NAME}.sensor_coordinates
+            SET kind = @kind, geometry = @geometry
+            WHERE reference = @reference;
+            """,
+            job_config=query_config,
+        )
+
+    def get_sensor_coordinates(self, reference=None):
+        """Get the sensor coordinates with the given reference from the sensor coordinates table if they exist. If no
+        reference is given, get all sensor coordinates.
+
+        :param str|None reference: the reference of the coordinates to get
+        :return dict|None: the sensor coordinates if they exist
+        """
+        if not reference:
+            return self.client.query(f"SELECT * FROM {DATASET_NAME}.sensor_coordinates").result().to_dataframe()
+
+        else:
+            query_config = bigquery.QueryJobConfig(
+                query_parameters=[bigquery.ScalarQueryParameter("reference", "STRING", reference)]
+            )
+
+            result = self.client.query(
+                f"""SELECT * FROM {DATASET_NAME}.sensor_coordinates
+                WHERE reference = @reference;
+                """,
+                job_config=query_config,
+            ).result()
+
+        if result.total_rows == 0:
+            return None
+
+        result = dict(result.to_dataframe().iloc[0])
+        result["geometry"] = json.loads(result["geometry"])
+        return result
+
+    def query(self, query_string):
+        """Query the dataset with an arbitrary query.
+
+        :param str query_string: the query to use
+        :return pd.DataFrame: the results of the query
+        """
+        return self.client.query(query_string).to_dataframe()
 
     def _get_time_period(self, start=None, finish=None):
         """Get a time period of:
@@ -222,11 +376,3 @@ class BigQuery:
         finish = finish or dt.datetime.now()
         start = start or finish - dt.timedelta(days=1)
         return start, finish
-
-    def query(self, query_string):
-        """Query the dataset with an arbitrary query.
-
-        :param str query_string: the query to use
-        :return pd.DataFrame: the results of the query
-        """
-        return self.client.query(query_string).to_dataframe()
