@@ -1,7 +1,7 @@
 import pandas as pd
 from plotly import express as px
 
-from aerosense_tools.preprocess import RawSignal
+from aerosense_tools.preprocess import RawData
 from aerosense_tools.queries import BigQuery
 from aerosense_tools.utils import get_cleaned_sensor_column_names
 
@@ -136,7 +136,7 @@ def plot_cp_curve(df, sensor_coordinates_reference, air_density=1.225, u=10, p_i
     raw_barometer_data.columns = sensor_types_metadata[sensor_type_reference]["sensors"]
 
     # Transform raw barometer data to correct units.
-    converted_barometer_data = RawSignal(raw_barometer_data, sensor_type_reference)
+    converted_barometer_data = RawData(raw_barometer_data, sensor_type_reference)
     converted_barometer_data.measurement_to_variable()
 
     # Get barometer coordinates.
