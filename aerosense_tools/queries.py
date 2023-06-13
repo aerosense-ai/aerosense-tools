@@ -376,10 +376,12 @@ class BigQuery:
         :param str installation_reference: the reference of the installation to get measurement sessions for
         :param str node_id: the ID of the node to get measurement sessions for
         :param str sensor_type_reference: the type of sensor to get measurement sessions for
-        :param datetime.datetime start: the time after which the sessions start
-        :param datetime.datetime finish: the time before which the sessions end
+        :param datetime.datetime|None start: the time after which the sessions start
+        :param datetime.datetime|None finish: the time before which the sessions end
         :return pandas.DataFrame: the measurement sessions
         """
+        start, finish = self._get_time_period(start, finish)
+
         query_config = bigquery.QueryJobConfig(
             query_parameters=[
                 bigquery.ScalarQueryParameter("installation_reference", "STRING", installation_reference),
