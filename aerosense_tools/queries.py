@@ -9,6 +9,7 @@ from google.cloud import bigquery
 from octue.cloud.storage import GoogleCloudStorageClient
 
 from aerosense_tools.preprocess import RawSignal
+from aerosense_tools.utils import remove_metadata_columns_and_set_datetime_index
 
 
 logger = logging.getLogger(__name__)
@@ -487,6 +488,8 @@ class BigQuery:
                         )
 
                         continue
+
+                    sensor_data_df = remove_metadata_columns_and_set_datetime_index(sensor_data_df)
 
                     _, measurement_sessions = RawSignal(
                         dataframe=sensor_data_df,
