@@ -479,12 +479,7 @@ class BigQuery:
                     try:
                         latest_session_finish_datetime = result.iloc[0]["finish_datetime"].to_pydatetime()
                     except IndexError:
-                        logger.info(
-                            "No new sessions available for installation %r, node %r, sensor type %r.",
-                            installation_reference,
-                            node_id,
-                            sensor_type_reference,
-                        )
+                        self._log_no_sessions(installation_reference, node_id, sensor_type_reference, "existing")
                         continue
 
                     if sensor_type_reference == "connection_statistics":
@@ -505,12 +500,7 @@ class BigQuery:
                         )
 
                     if sensor_data_df.empty:
-                        logger.info(
-                            "No new sessions available for installation %r, node %r, sensor type %r.",
-                            installation_reference,
-                            node_id,
-                            sensor_type_reference,
-                        )
+                        self._log_no_sessions(installation_reference, node_id, sensor_type_reference)
                         continue
 
                     sensor_data_df = remove_metadata_columns_and_set_datetime_index(sensor_data_df)
@@ -521,12 +511,7 @@ class BigQuery:
                     ).extract_measurement_sessions()
 
                     if measurement_sessions.empty:
-                        logger.info(
-                            "No new sessions available for installation %r, node %r, sensor type %r.",
-                            installation_reference,
-                            node_id,
-                            sensor_type_reference,
-                        )
+                        self._log_no_sessions(installation_reference, node_id, sensor_type_reference)
                         continue
 
                     # Add columns needed for sessions table.
@@ -580,3 +565,20 @@ class BigQuery:
         finish = finish or dt.datetime.now()
         start = start or finish - dt.timedelta(days=1)
         return start, finish
+
+    def _log_no_sessions(self, installation_reference, node_id, sensor_type_reference, session_type="new"):
+        """Log that none of the given session type are available.
+
+        :param str installation_reference:
+        :param str node_id:
+        :param str sensor_type_reference:
+        :param str session_type:
+        :return None:
+        """
+        logger.info(
+            "No %s sessions available for installation %r, node %r, sensor type %r.",
+            session_type,
+            installation_reference,
+            node_id,
+            sensor_type_reference,
+        )
