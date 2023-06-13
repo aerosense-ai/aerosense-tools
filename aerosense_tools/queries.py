@@ -370,8 +370,8 @@ class BigQuery:
         start=None,
         finish=None,
     ):
-        """Get the measurement sessions that exist for the given sensor type at the given node of the given installation
-        that start and finish within the given start and finish datetimes.
+        """Get the measurement sessions that exist for the given sensor type, node, and installation between the given
+        start and finish datetimes.
 
         :param str installation_reference: the reference of the installation to get measurement sessions for
         :param str node_id: the ID of the node to get measurement sessions for
