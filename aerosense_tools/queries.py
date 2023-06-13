@@ -406,8 +406,8 @@ class BigQuery:
         return result.to_dataframe()
 
     def extract_and_add_new_measurement_sessions(self, sensors=None):
-        """Extract new measurement sessions for the given sensors using sensor data already in the database and add them
-        to the sessions table. If no sensors are given, sessions are searched for for the following sensors:
+        """Extract new measurement sessions from the database for the given sensors and add them to the sessions table.
+        If no sensors are given, sessions for the following sensors are searched for:
         - connection_statistics
         - magnetometer
         - connection
@@ -443,7 +443,7 @@ class BigQuery:
             for node_id in nodes:
                 for sensor_type_reference in sensors:
                     logger.info(
-                        "Getting finish datetime for installation %r, node %r, sensor type %r.",
+                        "Getting latest extracted session finish datetime for installation %r, node %r, sensor type %r.",
                         installation_reference,
                         node_id,
                         sensor_type_reference,
@@ -452,13 +452,13 @@ class BigQuery:
                     result = (
                         self.client.query(
                             f"""
-                        SELECT finish_datetime FROM {table_name}
-                        WHERE installation_reference = @installation_reference
-                        AND node_id = @node_id
-                        AND sensor_type_reference = sensor_type_reference
-                        ORDER BY finish_datetime DESC
-                        LIMIT 1
-                        """,
+                            SELECT finish_datetime FROM {table_name}
+                            WHERE installation_reference = @installation_reference
+                            AND node_id = @node_id
+                            AND sensor_type_reference = sensor_type_reference
+                            ORDER BY finish_datetime DESC
+                            LIMIT 1
+                            """,
                             job_config=bigquery.QueryJobConfig(
                                 query_parameters=[
                                     bigquery.ScalarQueryParameter(
@@ -476,10 +476,10 @@ class BigQuery:
                     )
 
                     try:
-                        latest_session_end_datetime = result.iloc[0]["finish_datetime"].to_pydatetime()
+                        latest_session_finish_datetime = result.iloc[0]["finish_datetime"].to_pydatetime()
                     except IndexError:
                         logger.info(
-                            "No sessions available for installation %r, node %r, sensor type %r.",
+                            "No new sessions available for installation %r, node %r, sensor type %r.",
                             installation_reference,
                             node_id,
                             sensor_type_reference,
@@ -490,18 +490,17 @@ class BigQuery:
                         installation_reference=installation_reference,
                         node_id=node_id,
                         sensor_type_reference=sensor_type_reference,
-                        start=latest_session_end_datetime,
+                        start=latest_session_finish_datetime,
                         finish=datetime.datetime.now(),
                     )
 
                     if sensor_data_df.empty:
                         logger.info(
-                            "No new sessions for installation %r, node %r, sensor type %r.",
+                            "No new sessions available for installation %r, node %r, sensor type %r.",
                             installation_reference,
                             node_id,
                             sensor_type_reference,
                         )
-
                         continue
 
                     sensor_data_df = remove_metadata_columns_and_set_datetime_index(sensor_data_df)
@@ -511,6 +510,7 @@ class BigQuery:
                         sensor_type=sensor_type_reference,
                     ).extract_measurement_sessions()
 
+                    # Add columns needed for sessions table.
                     measurement_sessions["installation_reference"] = installation_reference
                     measurement_sessions["node_id"] = node_id
                     measurement_sessions["sensor_type_reference"] = sensor_type_reference
@@ -526,6 +526,7 @@ class BigQuery:
                         ]
                     ]
 
+                    # Add new sessions to sessions table.
                     self.client.load_table_from_dataframe(
                         dataframe=measurement_sessions,
                         destination=table_name,
