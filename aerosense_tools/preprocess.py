@@ -106,8 +106,8 @@ class RawSignal:
 
         session_times = pd.DataFrame(
             {
-                "start": sample_time["datetime"][start_rows].to_list(),
-                "end": sample_time["datetime"][end_rows].to_list(),
+                "start_datetime": sample_time["datetime"][start_rows].to_list(),
+                "finish_datetime": sample_time["datetime"][end_rows].to_list(),
             }
         )
 
