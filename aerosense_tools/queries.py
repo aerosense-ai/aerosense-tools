@@ -423,12 +423,11 @@ class BigQuery:
         :param list(str)|None sensors: the sensors to search for new measurement sessions for
         :return None:
         """
-        table_name = DATASET_NAME + ".sessions"
+        sessions_table_name = DATASET_NAME + ".sessions"
 
         sensors = sensors or (
             "connection_statistics",
             "magnetometer",
-            "connection-statistics",
             "barometer",
             "barometer_thermometer",
             "accelerometer",
@@ -454,7 +453,7 @@ class BigQuery:
                     result = (
                         self.client.query(
                             f"""
-                            SELECT finish_datetime FROM {table_name}
+                            SELECT finish_datetime FROM {sessions_table_name}
                             WHERE installation_reference = @installation_reference
                             AND node_id = @node_id
                             AND sensor_type_reference = sensor_type_reference
@@ -488,13 +487,22 @@ class BigQuery:
                         )
                         continue
 
-                    sensor_data_df, _ = self.get_sensor_data(
-                        installation_reference=installation_reference,
-                        node_id=node_id,
-                        sensor_type_reference=sensor_type_reference,
-                        start=latest_session_finish_datetime,
-                        finish=datetime.datetime.now(),
-                    )
+                    if sensor_type_reference == "connection_statistics":
+                        sensor_data_df = self.get_aggregated_connection_statistics(
+                            installation_reference=installation_reference,
+                            node_id=node_id,
+                            start=latest_session_finish_datetime,
+                            finish=datetime.datetime.now(),
+                        )
+
+                    else:
+                        sensor_data_df, _ = self.get_sensor_data(
+                            installation_reference=installation_reference,
+                            node_id=node_id,
+                            sensor_type_reference=sensor_type_reference,
+                            start=latest_session_finish_datetime,
+                            finish=datetime.datetime.now(),
+                        )
 
                     if sensor_data_df.empty:
                         logger.info(
@@ -511,6 +519,15 @@ class BigQuery:
                         dataframe=sensor_data_df,
                         sensor_type=sensor_type_reference,
                     ).extract_measurement_sessions()
+
+                    if measurement_sessions.empty:
+                        logger.info(
+                            "No new sessions available for installation %r, node %r, sensor type %r.",
+                            installation_reference,
+                            node_id,
+                            sensor_type_reference,
+                        )
+                        continue
 
                     # Add columns needed for sessions table.
                     measurement_sessions["installation_reference"] = installation_reference
@@ -531,8 +548,15 @@ class BigQuery:
                     # Add new sessions to sessions table.
                     self.client.load_table_from_dataframe(
                         dataframe=measurement_sessions,
-                        destination=table_name,
+                        destination=sessions_table_name,
                     ).result()
+
+                    logger.info(
+                        "New sessions added for installation %r, node %r, sensor type %r.",
+                        installation_reference,
+                        node_id,
+                        sensor_type_reference,
+                    )
 
     def query(self, query_string):
         """Query the dataset with an arbitrary query.
