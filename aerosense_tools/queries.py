@@ -406,6 +406,21 @@ class BigQuery:
         return result.to_dataframe()
 
     def extract_and_add_new_measurement_sessions(self, sensors=None):
+        """Extract new measurement sessions for the given sensors using sensor data already in the database and add them
+        to the sessions table. If no sensors are given, sessions are searched for for the following sensors:
+        - connection_statistics
+        - magnetometer
+        - connection
+        - barometer
+        - barometer_thermometer
+        - accelerometer
+        - gyroscope
+        - battery_info
+        - differential_barometer
+
+        :param list(str)|None sensors: the sensors to search for new measurement sessions for
+        :return None:
+        """
         table_name = DATASET_NAME + ".sessions"
 
         sensors = sensors or (
