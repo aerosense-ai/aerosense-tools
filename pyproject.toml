@@ -2,7 +2,7 @@
 
 [tool.poetry]
 name = "aerosense-tools"
-version = "0.9.2"
+version = "0.10.0"
 description = "Functions for working with aerosense data, useful in building dashboards, analysis notebooks and digital twin services"
 authors = ["Tom Clark", "Marcus Lugg", "Yuriy Marykovsky"]
 license = "BSD-3"
