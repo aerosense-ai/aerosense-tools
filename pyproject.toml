@@ -1,5 +1,3 @@
-[project]
-
 [tool.poetry]
 name = "aerosense-tools"
 version = "0.10.1"
